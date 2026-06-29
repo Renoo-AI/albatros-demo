@@ -1,0 +1,2394 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALBATROS — Café & Salle Des Fêtes</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Lato:wght@300;400;700&family=Montserrat:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: #F4F6FA;
+            --bg-deep: #0A1A3F;
+            --surface: #FFFFFF;
+            --surface-alt: #F9FBFF;
+            --text-primary: #1A2238;
+            --text-secondary: #5A657D;
+            --text-muted: #8C9AB5;
+            --accent: #FF4FA3;
+            --accent-hover: #E63D8E;
+            --accent-soft: #FFE0EE;
+            --rose: #FF4FA3;
+            --rose-hover: #E63D8E;
+            --rose-soft: #FFE0EE;
+            --mauve: #FF4FA3;
+            --mauve-deep: #E63D8E;
+            --mauve-dark: #0A1A3F;
+            --gold: #D4AF7A;
+            --gold-soft: #F5E6C7;
+            --border: #DCE2ED;
+            --border-light: #EFF2F7;
+            --divider: #DCE2ED;
+            --muted: #E2E8F0;
+            --success: #10B981;
+            --success-bg: #ECFDF5;
+            --blocked: #EF4444;
+            --error: #EF4444;
+            --error-bg: #FEF2F2;
+            --shadow-sm: 0 2px 8px rgba(10, 26, 63, 0.05);
+            --shadow-md: 0 8px 24px rgba(10, 26, 63, 0.08);
+            --shadow-lg: 0 16px 48px rgba(10, 26, 63, 0.12);
+            --shadow-glow: 0 0 60px rgba(255, 79, 163, 0.2);
+            --shadow-soft: 0 10px 40px -10px rgba(255, 79, 163, 0.1);
+            --shadow-elevated: 0 20px 60px -15px rgba(255, 79, 163, 0.2);
+            --gradient-brand: linear-gradient(135deg, #FF4FA3 0%, #0A1A3F 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-primary);
+            line-height: 1.7;
+            font-weight: 300;
+            overflow-x: hidden;
+        }
+
+        /* Typography */
+        h1, h2, h3, h4 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 400;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+
+        .eyebrow {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.75rem;
+            font-weight: 500;
+            letter-spacing: 0.25em;
+            text-transform: uppercase;
+            color: var(--accent);
+        }
+
+        .section-title {
+            font-size: clamp(2rem, 4vw, 3rem);
+            margin: 0.75rem 0 1.5rem;
+        }
+
+        .section-intro {
+            color: var(--text-secondary);
+            max-width: 600px;
+            font-size: 1.05rem;
+        }
+
+        /* Layout */
+        section {
+            padding: clamp(4rem, 8vw, 7rem) 1.5rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .container-narrow {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* Decorative divider */
+        .divider {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin: 1.5rem auto 2rem;
+            width: 100%;
+            max-width: 240px;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+        .divider-diamond {
+            width: 7px;
+            height: 7px;
+            background: var(--accent);
+            transform: rotate(45deg);
+            flex-shrink: 0;
+        }
+
+        .divider-left {
+            justify-content: flex-start;
+            margin-left: 0;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(245, 243, 240, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-light);
+            transition: all 0.3s ease;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1.1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            text-decoration: none;
+            text-align: center;
+        }
+        .logo-mark {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.6rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            letter-spacing: 0.12em;
+            display: block;
+            line-height: 1;
+        }
+        .logo-sub {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.55rem;
+            font-weight: 400;
+            letter-spacing: 0.35em;
+            text-transform: uppercase;
+            color: var(--accent);
+            display: block;
+            margin-top: 4px;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 2.5rem;
+            list-style: none;
+        }
+        .nav-links a {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.78rem;
+            font-weight: 400;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--text-primary);
+            text-decoration: none;
+            transition: color 0.3s ease;
+            position: relative;
+        }
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 0;
+            width: 0;
+            height: 1px;
+            background: var(--accent);
+            transition: width 0.3s ease;
+        }
+        .nav-links a:hover {
+            color: var(--accent);
+        }
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        .btn {
+            display: inline-block;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.75rem;
+            font-weight: 500;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            padding: 0.9rem 2rem;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s ease;
+            border-radius: 0;
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-soft);
+        }
+        .btn-rose {
+            background: var(--rose);
+            color: white;
+        }
+        .btn-rose:hover {
+            background: var(--rose-hover);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-soft);
+        }
+        .btn-outline {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        .btn-outline:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .nav-cta {
+            padding: 0.7rem 1.6rem;
+            font-size: 0.7rem;
+        }
+
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+
+        /* Hero */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+            padding: 6rem 1.5rem 4rem;
+            background: linear-gradient(rgba(58, 58, 58, 0.4), rgba(58, 58, 58, 0.55)), 
+                        url('https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1920&q=80') center/cover no-repeat;
+            color: white;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at center, transparent 0%, rgba(58,58,58,0.3) 100%);
+        }
+        .hero-content {
+            position: relative;
+            z-index: 2;
+            max-width: 800px;
+        }
+        .hero .eyebrow {
+            color: var(--rose);
+            margin-bottom: 1.5rem;
+            display: block;
+        }
+        .hero h1 {
+            font-size: clamp(3.5rem, 9vw, 6.5rem);
+            color: white;
+            font-weight: 500;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 20px rgba(0,0,0,0.3);
+        }
+        .hero-tagline {
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+            font-size: clamp(1rem, 2vw, 1.3rem);
+            font-weight: 400;
+            margin-bottom: 2.5rem;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        .hero-divider {
+            margin: 1.5rem auto 2.5rem;
+        }
+        .hero-divider::before, .hero-divider::after {
+            background: rgba(255, 255, 255, 0.4);
+        }
+        .hero-divider .divider-diamond {
+            background: var(--rose);
+        }
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .hero .btn-outline {
+            color: white;
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        .hero .btn-outline:hover {
+            border-color: white;
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .scroll-indicator {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.7);
+            font-size: 0.7rem;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            font-family: 'Montserrat', sans-serif;
+            animation: float 2.5s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(8px); }
+        }
+
+        /* Intro / Bienvenue */
+        .intro {
+            text-align: center;
+            background: var(--surface);
+        }
+        .intro-text {
+            font-size: 1.15rem;
+            line-height: 1.9;
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        .intro-text .accent {
+            color: var(--accent);
+            font-style: italic;
+            font-family: 'Playfair Display', serif;
+        }
+
+        /* Split sections */
+        .split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+        .split-image {
+            position: relative;
+            overflow: hidden;
+            border-radius: 2px;
+        }
+        .split-image img {
+            width: 100%;
+            height: 560px;
+            object-fit: cover;
+            display: block;
+            transition: transform 0.8s ease;
+        }
+        .split-image:hover img {
+            transform: scale(1.03);
+        }
+        .split-image::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border: 1px solid rgba(255,255,255,0.15);
+            pointer-events: none;
+        }
+        .split-content h2 {
+            margin-bottom: 1.5rem;
+        }
+        .split-content p {
+            color: var(--text-secondary);
+            margin-bottom: 1.25rem;
+            font-size: 1.02rem;
+        }
+
+        .feature-list {
+            list-style: none;
+            margin: 2rem 0;
+        }
+        .feature-list li {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.6rem 0;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-light);
+        }
+        .feature-list li:last-child {
+            border-bottom: none;
+        }
+        .feature-list i {
+            color: var(--accent);
+            font-size: 0.85rem;
+            width: 20px;
+        }
+
+        .stat-row {
+            display: flex;
+            gap: 3rem;
+            margin-top: 2.5rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-light);
+        }
+        .stat {
+            display: flex;
+            flex-direction: column;
+        }
+        .stat-number {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.2rem;
+            color: var(--accent);
+            line-height: 1;
+            margin-bottom: 0.3rem;
+        }
+        .stat-label {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.7rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+
+        .cafe-section {
+            background: var(--surface);
+        }
+        .salle-section {
+            background: var(--surface-alt);
+        }
+        .salle-section .split-image {
+            order: 2;
+        }
+        .salle-section .split-content {
+            order: 1;
+        }
+
+        /* Galerie */
+        .galerie {
+            background: var(--surface);
+            text-align: center;
+        }
+        .galerie-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-top: 3rem;
+        }
+        .galerie-item {
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+        }
+        .galerie-item img {
+            width: 100%;
+            height: 320px;
+            object-fit: cover;
+            display: block;
+            transition: transform 0.6s ease, filter 0.6s ease;
+        }
+        .galerie-item:hover img {
+            transform: scale(1.08);
+            filter: brightness(1.05);
+        }
+        .galerie-item::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(transparent 60%, rgba(169, 148, 181, 0.15));
+            opacity: 0;
+            transition: opacity 0.6s ease;
+        }
+        .galerie-item:hover::after {
+            opacity: 1;
+        }
+
+        /* Pourquoi - asymmetric layout */
+        .pourquoi {
+            background: var(--surface-alt);
+            text-align: center;
+        }
+        .pourquoi-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-top: 3rem;
+            text-align: left;
+        }
+        .pourquoi-item {
+            padding: 2.5rem;
+            background: var(--surface);
+            border: 1px solid var(--border-light);
+            transition: all 0.4s ease;
+            position: relative;
+        }
+        .pourquoi-item:hover {
+            border-color: var(--accent);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-soft);
+        }
+        .pourquoi-item.large {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 2.5rem;
+            align-items: center;
+            background: linear-gradient(135deg, var(--accent-soft) 0%, var(--surface) 100%);
+            border-color: var(--border);
+        }
+        .pourquoi-icon {
+            width: 56px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--accent-soft);
+            color: var(--accent);
+            font-size: 1.3rem;
+            margin-bottom: 1.5rem;
+        }
+        .pourquoi-item.large .pourquoi-icon {
+            width: 72px;
+            height: 72px;
+            font-size: 1.6rem;
+            margin-bottom: 0;
+            background: white;
+        }
+        .pourquoi-item h3 {
+            font-size: 1.4rem;
+            margin-bottom: 0.75rem;
+        }
+        .pourquoi-item p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            margin: 0;
+        }
+
+        /* Témoignages */
+        .temoignages {
+            background: var(--surface);
+            text-align: center;
+        }
+        .temoignages-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            margin-top: 3rem;
+            text-align: left;
+        }
+        .temoignage {
+            padding: 2.5rem;
+            border-left: 2px solid var(--accent);
+            background: var(--surface-alt);
+        }
+        .temoignage-quote {
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+            font-size: 1.15rem;
+            line-height: 1.7;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+        }
+        .temoignage-quote::before {
+            content: '« ';
+            color: var(--accent);
+            font-size: 1.3rem;
+        }
+        .temoignage-quote::after {
+            content: ' »';
+            color: var(--accent);
+            font-size: 1.3rem;
+        }
+        .temoignage-author {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        .temoignage-event {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.7rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-top: 0.3rem;
+        }
+
+        /* Réservation (New Creative Design - No Moon) */
+        .ambient-bg {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+        .particle {
+            position: absolute;
+            width: 4px; height: 4px;
+            background: var(--rose);
+            border-radius: 50%;
+            opacity: 0;
+            animation: floatUp 15s linear infinite;
+            box-shadow: 0 0 8px var(--rose-soft);
+        }
+        @keyframes floatUp {
+            0% { top: 100%; transform: translateX(0) scale(0); opacity: 0; }
+            10% { opacity: 0.6; transform: translateX(10px) scale(1); }
+            90% { opacity: 0.6; }
+            100% { top: -10%; transform: translateX(80px) scale(0); opacity: 0; }
+        }
+
+        .reservation {
+            background: var(--bg);
+            text-align: center;
+            position: relative;
+            padding: 5rem 0;
+            overflow: hidden;
+        }
+
+        /* Container specific to reservation to handle z-index and ambient bg */
+        .reservation .container {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* === Section header with ornamental flourish === */
+        .reservation .section-header { text-align: center; margin-bottom: 3rem; }
+        .reservation .section-header .ui-label { color: var(--rose-hover); margin-bottom: 1rem; display: block; }
+        .reservation .section-header h2 {
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            margin-bottom: 1rem;
+            font-style: italic;
+            background: var(--gradient-brand);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .reservation .section-header p { color: var(--text-secondary); max-width: 580px; margin: 0 auto; }
+
+        .ornament {
+            display: flex; align-items: center; justify-content: center;
+            gap: 1rem; margin: 1.5rem 0;
+        }
+        .ornament-line {
+            width: 60px; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--mauve), transparent);
+        }
+        .ornament-diamond {
+            width: 8px; height: 8px;
+            background: var(--mauve);
+            transform: rotate(45deg);
+            position: relative;
+        }
+        .ornament-diamond::before {
+            content: ''; position: absolute; inset: -3px;
+            border: 1px solid var(--mauve);
+            transform: rotate(45deg);
+            opacity: 0.4;
+        }
+
+        /* === Booking steps — timeline ribbon === */
+        .booking-steps {
+            display: flex; justify-content: center; align-items: center;
+            gap: 0; margin-bottom: 3rem; flex-wrap: wrap;
+            position: relative;
+        }
+        .booking-steps::before {
+            content: '';
+            position: absolute;
+            top: 20px; left: 50%; transform: translateX(-50%);
+            width: 70%; max-width: 400px; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--divider), transparent);
+            z-index: 0;
+        }
+        .step {
+            display: flex; flex-direction: column; align-items: center;
+            gap: 0.6rem;
+            color: var(--text-muted);
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.75rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            z-index: 1;
+            padding: 0 1.5rem;
+            transition: color 0.4s;
+        }
+        .step.active { color: var(--mauve-deep); }
+        .step.completed { color: var(--rose-hover); }
+        .step-num {
+            width: 40px; height: 40px; border-radius: 50%;
+            border: 1.5px solid var(--divider);
+            background: var(--surface);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 500; font-family: 'Playfair Display', serif;
+            font-size: 1rem;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+        }
+        .step.active .step-num {
+            background: var(--gradient-brand);
+            border-color: transparent;
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(169, 148, 181, 0.4);
+            transform: scale(1.1);
+        }
+        .step.completed .step-num {
+            background: var(--rose-soft);
+            border-color: var(--rose);
+            color: var(--rose-hover);
+        }
+        .step.completed .step-num i { font-size: 0.85rem; }
+
+        /* === Booking wrapper === */
+        .booking-wrapper {
+            background: var(--surface);
+            border-radius: 28px;
+            box-shadow: var(--shadow-lg);
+            padding: 3rem;
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .booking-wrapper::before {
+            content: '';
+            position: absolute;
+            top: -100px; right: -100px;
+            width: 300px; height: 300px;
+            background: radial-gradient(circle, var(--rose-soft) 0%, transparent 70%);
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .booking-wrapper::after {
+            content: '';
+            position: absolute;
+            bottom: -120px; left: -120px;
+            width: 350px; height: 350px;
+            background: radial-gradient(circle, var(--mauve) 0%, transparent 70%);
+            opacity: 0.08;
+            pointer-events: none;
+        }
+
+        .step-content {
+            display: none;
+            position: relative;
+            z-index: 1;
+        }
+        .step-content.active {
+            display: block;
+            animation: veilReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes veilReveal {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* === CALENDAR === */
+        .calendar {
+            max-width: 520px;
+            margin: 0 auto;
+        }
+        .calendar-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .calendar-header h3 {
+            font-size: 1.4rem;
+            font-style: italic;
+            color: var(--text-primary);
+        }
+        .cal-nav {
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .cal-nav:hover:not(:disabled) {
+            background: var(--gradient-brand);
+            color: #fff;
+            border-color: transparent;
+            transform: scale(1.1);
+        }
+        .cal-nav:disabled { opacity: 0.25; cursor: not-allowed; }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+        }
+        .cal-day-name {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            text-align: center;
+            padding: 0.5rem 0;
+            letter-spacing: 0.15em;
+            font-weight: 500;
+        }
+        .cal-day {
+            aspect-ratio: 1;
+            border: none;
+            background: var(--surface-alt);
+            border-radius: 12px;
+            font-family: 'Lato', sans-serif;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
+        }
+        .cal-day::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--gradient-brand);
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: -1;
+        }
+        .cal-day:hover:not(:disabled):not(.blocked):not(.past) {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            color: var(--mauve-deep);
+        }
+        .cal-day.empty { background: transparent; cursor: default; }
+        .cal-day.past {
+            color: var(--text-muted);
+            background: transparent;
+            cursor: not-allowed;
+            opacity: 0.4;
+        }
+        .cal-day.blocked {
+            background: var(--surface-alt);
+            color: var(--text-muted);
+            cursor: not-allowed;
+            position: relative;
+        }
+        .cal-day.blocked::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 20%; right: 20%;
+            height: 1.5px;
+            background: var(--blocked);
+            border-radius: 1px;
+            opacity: 0.6;
+            transform: rotate(-15deg);
+        }
+        .cal-day.selected {
+            background: var(--gradient-brand);
+            color: #fff;
+            box-shadow: 0 6px 20px rgba(169, 148, 181, 0.5);
+            transform: scale(1.05);
+        }
+        .cal-day.today {
+            border: 2px solid var(--mauve);
+            font-weight: 600;
+        }
+
+        /* === Legend === */
+        .legend {
+            display: flex; gap: 2rem; justify-content: center;
+            margin-top: 2rem; flex-wrap: wrap;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+        }
+        .legend-item {
+            display: flex; align-items: center; gap: 0.6rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-family: 'Montserrat', sans-serif;
+            letter-spacing: 0.05em;
+        }
+        .legend-swatch {
+            width: 16px; height: 16px;
+            border-radius: 5px;
+        }
+        .legend-swatch.available {
+            background: var(--gradient-brand);
+        }
+        .legend-swatch.blocked {
+            background: var(--surface-alt);
+            border: 1px solid var(--blocked);
+            position: relative;
+        }
+        .legend-swatch.blocked::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 20%; right: 20%;
+            height: 1.5px;
+            background: var(--blocked);
+            transform: rotate(-15deg);
+        }
+
+        /* === Status message === */
+        .status-msg {
+            margin-top: 1.5rem;
+            padding: 1rem 1.25rem;
+            border-radius: 14px;
+            text-align: center;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.9rem;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 0.6rem;
+        }
+        .status-msg.show {
+            display: flex;
+            animation: veilReveal 0.4s ease;
+        }
+        .status-msg.available {
+            background: rgba(127, 184, 154, 0.12);
+            color: var(--success);
+            border: 1px solid rgba(127, 184, 154, 0.3);
+        }
+        .status-msg.blocked {
+            background: rgba(196, 127, 138, 0.12);
+            color: var(--blocked);
+            border: 1px solid rgba(196, 127, 138, 0.3);
+        }
+
+        /* === Form === */
+        .selected-date-summary {
+            background: var(--surface-alt);
+            border: 1px solid var(--divider);
+            border-radius: 16px;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .selected-date-summary::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 4px;
+            background: var(--gradient-brand);
+        }
+        .selected-date-summary .ui-label {
+            color: var(--mauve-deep);
+            margin-bottom: 0.3rem;
+            display: block;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.7rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+        }
+        .selected-date-summary .date-text {
+            font-size: 1.15rem;
+            color: var(--text-primary);
+            font-weight: 500;
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+        }
+        .selected-date-summary button {
+            background: transparent;
+            border: 1px solid var(--divider);
+            color: var(--text-secondary);
+            padding: 0.5rem 1.1rem;
+            border-radius: 50px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            font-family: 'Montserrat', sans-serif;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            transition: all 0.3s;
+        }
+        .selected-date-summary button:hover {
+            background: var(--surface);
+            color: var(--mauve-deep);
+            border-color: var(--mauve);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            max-width: 680px;
+            margin: 0 auto;
+        }
+        .form-group { display: flex; flex-direction: column; text-align: left; }
+        .form-group.full { grid-column: 1 / -1; }
+        .form-group label {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.7rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 0.6rem;
+            font-weight: 500;
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            font-family: 'Lato', sans-serif;
+            font-size: 1rem;
+            padding: 0.95rem 1.1rem;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--surface-alt);
+            color: var(--text-primary);
+            transition: all 0.3s;
+            appearance: none;
+        }
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--mauve);
+            background: var(--surface);
+            box-shadow: 0 0 0 4px rgba(169, 148, 181, 0.1);
+        }
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+            font-family: inherit;
+        }
+
+        /* === Event type selector — custom cards === */
+        .event-selector {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+        .event-card {
+            background: var(--surface-alt);
+            border: 1.5px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem 0.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+        }
+        .event-card i {
+            font-size: 1.3rem;
+            color: var(--mauve);
+            margin-bottom: 0.5rem;
+            display: block;
+            transition: transform 0.3s;
+        }
+        .event-card span {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.7rem;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            display: block;
+        }
+        .event-card:hover {
+            border-color: var(--mauve);
+            transform: translateY(-3px);
+        }
+        .event-card:hover i { transform: scale(1.2); }
+        .event-card.selected {
+            background: var(--gradient-brand);
+            border-color: transparent;
+        }
+        .event-card.selected i,
+        .event-card.selected span { color: #fff; }
+
+        /* === Form actions === */
+        .form-actions {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-top: 2.5rem;
+            flex-wrap: wrap;
+            max-width: 680px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+
+        /* === Confirmation — The Golden Seal === */
+        .confirmation {
+            text-align: center;
+            padding: 2rem 1rem;
+            position: relative;
+        }
+        .seal {
+            width: 120px; height: 120px;
+            margin: 0 auto 2rem;
+            position: relative;
+            animation: sealStamp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @keyframes sealStamp {
+            0% { transform: scale(0) rotate(-180deg); opacity: 0; }
+            60% { transform: scale(1.2) rotate(10deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0); opacity: 1; }
+        }
+        .seal-outer {
+            position: absolute;
+            inset: 0;
+            border: 2px dashed var(--gold);
+            border-radius: 50%;
+            animation: rotate 20s linear infinite;
+        }
+        @keyframes rotate {
+            from { transform: rotate(0); }
+            to { transform: rotate(360deg); }
+        }
+        .seal-inner {
+            position: absolute;
+            inset: 15px;
+            background: var(--gradient-brand);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 2.5rem;
+            box-shadow: 0 0 30px rgba(169, 148, 181, 0.5);
+        }
+
+        .confirmation h3 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            font-style: italic;
+            background: var(--gradient-brand);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .confirmation p {
+            color: var(--text-secondary);
+            max-width: 500px;
+            margin: 0 auto 2rem;
+            font-size: 1.05rem;
+        }
+
+        .booking-details-card {
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem 2rem;
+            max-width: 450px;
+            margin: 0 auto 2rem;
+            text-align: left;
+        }
+        .booking-details-card .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.6rem 0;
+            border-bottom: 1px dashed var(--border);
+            font-size: 0.9rem;
+        }
+        .booking-details-card .detail-row:last-child { border-bottom: none; }
+        .booking-details-card .detail-label {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.7rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+        .booking-details-card .detail-value {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+        .booking-ref {
+            display: inline-block;
+            background: var(--surface-alt);
+            border: 1px dashed var(--gold);
+            padding: 0.7rem 1.5rem;
+            border-radius: 10px;
+            font-family: 'Montserrat', sans-serif;
+            letter-spacing: 0.2em;
+            color: var(--gold);
+            font-weight: 600;
+            margin-bottom: 2rem;
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 768px) {
+            .form-grid { grid-template-columns: 1fr; }
+            .event-selector { grid-template-columns: repeat(2, 1fr); }
+            .form-actions { flex-direction: column-reverse; }
+            .form-actions button { width: 100%; justify-content: center; }
+        }
+
+
+        /* Contact */
+        .contact {
+            background: var(--surface);
+        }
+        .contact-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            margin-top: 3rem;
+        }
+        .contact-info h3 {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .contact-item {
+            display: flex;
+            gap: 1.25rem;
+            margin-bottom: 1.75rem;
+            align-items: flex-start;
+        }
+        .contact-item-icon {
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--accent-soft);
+            color: var(--accent);
+            flex-shrink: 0;
+            font-size: 1rem;
+        }
+        .contact-item-label {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 500;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 0.3rem;
+        }
+        .contact-item-value {
+            font-size: 1rem;
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        .hours-card {
+            background: var(--surface-alt);
+            padding: 2.5rem;
+            border: 1px solid var(--border-light);
+        }
+        .hours-card h3 {
+            font-size: 1.4rem;
+            margin-bottom: 1.5rem;
+        }
+        .hours-section {
+            margin-bottom: 1.5rem;
+        }
+        .hours-section-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 500;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .hours-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.4rem 0;
+            font-size: 0.92rem;
+        }
+        .hours-row .day {
+            color: var(--text-secondary);
+        }
+        .hours-row .time {
+            color: var(--text-primary);
+            font-weight: 400;
+        }
+        .hours-row.closed .time {
+            color: var(--error);
+            font-style: italic;
+        }
+
+        /* Footer */
+        footer {
+            background: #2A2530;
+            color: rgba(255, 255, 255, 0.7);
+            padding: 4rem 1.5rem 2rem;
+        }
+        .footer-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 3rem;
+            padding-bottom: 3rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .footer-brand .logo-mark {
+            color: white;
+        }
+        .footer-brand p {
+            margin-top: 1.25rem;
+            font-size: 0.9rem;
+            line-height: 1.7;
+            max-width: 350px;
+        }
+        .footer-col h4 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.75rem;
+            font-weight: 500;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: white;
+            margin-bottom: 1.25rem;
+        }
+        .footer-col ul {
+            list-style: none;
+        }
+        .footer-col ul li {
+            margin-bottom: 0.6rem;
+        }
+        .footer-col a {
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.3s ease;
+        }
+        .footer-col a:hover {
+            color: var(--rose);
+        }
+        .footer-social {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        .footer-social a {
+            width: 38px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255,255,255,0.2);
+            color: rgba(255,255,255,0.7);
+            transition: all 0.3s ease;
+        }
+        .footer-social a:hover {
+            border-color: var(--rose);
+            color: var(--rose);
+        }
+        .footer-bottom {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding-top: 2rem;
+            text-align: center;
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.5);
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .nav-links {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: var(--surface);
+                flex-direction: column;
+                padding: 2rem 1.5rem;
+                gap: 1.5rem;
+                border-bottom: 1px solid var(--border-light);
+                box-shadow: var(--shadow-soft);
+            }
+            .nav-links.open {
+                display: flex;
+            }
+            .menu-toggle {
+                display: block;
+            }
+            .nav-cta {
+                display: none;
+            }
+
+            .split {
+                grid-template-columns: 1fr;
+                gap: 2.5rem;
+            }
+            .split-image img {
+                height: 400px;
+            }
+            .salle-section .split-image {
+                order: 1;
+            }
+            .salle-section .split-content {
+                order: 2;
+            }
+
+            .galerie-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .pourquoi-grid {
+                grid-template-columns: 1fr;
+            }
+            .pourquoi-item.large {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+            .pourquoi-item.large .pourquoi-icon {
+                margin: 0 auto 1.5rem;
+            }
+
+            .temoignages-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .contact-grid {
+                grid-template-columns: 1fr;
+                gap: 2.5rem;
+            }
+
+            .footer-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .stat-row {
+                flex-wrap: wrap;
+                gap: 1.5rem;
+            }
+        }
+
+        @media (max-width: 500px) {
+            .galerie-grid {
+                grid-template-columns: 1fr;
+            }
+            .hero-buttons {
+                flex-direction: column;
+                width: 100%;
+            }
+            .hero-buttons .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-container">
+            <a href="#accueil" class="logo">
+                <span class="logo-mark">ALBATROS</span>
+                <span class="logo-sub">Salle Des Fêtes</span>
+            </a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="#accueil">Accueil</a></li>
+                <li><a href="#salle">La Salle</a></li>
+                <li><a href="#galerie">Galerie</a></li>
+                <li><a href="#contact">Contact</a></li>
+                <li><a href="admin.html" style="color: var(--gold); border: 1px dashed var(--gold); padding: 4px 10px; border-radius: 6px; font-weight: 500;">Admin</a></li>
+            </ul>
+            <a href="#reservation" class="btn btn-primary nav-cta">Réserver</a>
+            <button class="menu-toggle" id="menuToggle" aria-label="Menu">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <header class="hero" id="accueil">
+        <div class="hero-content">
+            <span class="eyebrow">Salle Des Fêtes</span>
+            <h1>ALBATROS</h1>
+            <p class="hero-tagline">L'art de célébrer les moments qui comptent</p>
+            <div class="divider hero-divider">
+                <span class="divider-diamond"></span>
+            </div>
+            <div class="hero-buttons">
+                <a href="#reservation" class="btn btn-rose">Réserver votre date</a>
+                <a href="#salle" class="btn btn-outline">Découvrir le lieu</a>
+            </div>
+        </div>
+        <div class="scroll-indicator">Découvrir</div>
+    </header>
+
+    <!-- Intro -->
+    <section class="intro">
+        <div class="container-narrow">
+            <span class="eyebrow">Bienvenue</span>
+            <h2 class="section-title">Le prestige d'une célébration réussie</h2>
+            <div class="divider"><span class="divider-diamond"></span></div>
+            <p class="intro-text">
+                Situé à Manouba, <span class="accent">ALBATROS</span> est le lieu d'exception pour tous vos événements marquants. Que ce soit pour un mariage féerique, des fiançailles mémorables ou une réception de haut standing, notre salle raffinée et notre équipe dévouée mettent tout en œuvre pour faire de votre célébration un moment inoubliable et magique.
+            </p>
+        </div>
+    </section>
+
+    <!-- Service Traiteur & Lounge -->
+    <section class="cafe-section" id="salle-lounge">
+        <div class="container">
+            <div class="split">
+                <div class="split-image">
+                    <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=900&q=80" alt="L'Espace Lounge Albatros">
+                </div>
+                <div class="split-content">
+                    <span class="eyebrow">Le Lounge & Traiteur</span>
+                    <h2 class="section-title">Une expérience culinaire<br>et un accueil chaleureux</h2>
+                    <p>
+                        Pour accompagner vos festivités, ALBATROS met à votre disposition un service traiteur d'exception et un espace lounge raffiné pour accueillir vos invités d'honneur dans les meilleures conditions. Nos équipes élaborent des buffets prestigieux et des pâtisseries fines traditionnelles et modernes.
+                    </p>
+                    <ul class="feature-list">
+                        <li><i class="fa-solid fa-utensils"></i> Buffets prestigieux et dîners personnalisés</li>
+                        <li><i class="fa-solid fa-cookie-bite"></i> Pâtisseries tunisiennes fines faites maison</li>
+                        <li><i class="fa-solid fa-couch"></i> Salon d'accueil VIP élégant et confortable</li>
+                        <li><i class="fa-solid fa-bell"></i> Service professionnel et attentionné pour vos invités</li>
+                    </ul>
+                    <a href="#contact" class="btn btn-outline">Voir l'emplacement</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Salle des Fêtes -->
+    <section class="salle-section" id="salle">
+        <div class="container">
+            <div class="split">
+                <div class="split-image">
+                    <img src="https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=900&q=80" alt="Salle Des Fêtes Albatros">
+                </div>
+                <div class="split-content">
+                    <span class="eyebrow">La Salle Des Fêtes</span>
+                    <h2 class="section-title">Pour vos célébrations<br>les plus précieuses</h2>
+                    <p>
+                        La salle des fêtes ALBATROS est l'écrin idéal pour vos mariages, fiançailles, anniversaires et événements professionnels. Avec une capacité d'accueil généreuse et une décoration élégante, nous donnons vie à vos rêves les plus ambitieux.
+                    </p>
+                    <p>
+                        Notre équipe dévouée s'occupe de chaque détail, de la table à la scène, pour que vous puissiez profiter pleinement de votre événement.
+                    </p>
+                    <div class="stat-row">
+                        <div class="stat">
+                            <span class="stat-number">400</span>
+                            <span class="stat-label">Invités Max</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-number">15</span>
+                            <span class="stat-label">Ans d'expérience</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-number">500+</span>
+                            <span class="stat-label">Événements</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Galerie -->
+    <section class="galerie" id="galerie">
+        <div class="container">
+            <span class="eyebrow">Galerie</span>
+            <h2 class="section-title">Quelques moments</h2>
+            <div class="divider"><span class="divider-diamond"></span></div>
+            <div class="galerie-grid">
+                <div class="galerie-item">
+                    <img src="https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=600&q=80" alt="Décoration de table élégante">
+                </div>
+                <div class="galerie-item">
+                    <img src="https://images.unsplash.com/photo-1469371670807-013ccf25f16a?w=600&q=80" alt="Salle de réception décorée">
+                </div>
+                <div class="galerie-item">
+                    <img src="https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=600&q=80" alt="Célébration de mariage">
+                </div>
+                <div class="galerie-item">
+                    <img src="https://images.unsplash.com/photo-1555244162-803834f70033?w=600&q=80" alt="Ambiance café">
+                </div>
+                <div class="galerie-item">
+                    <img src="https://images.unsplash.com/article-1567593798146-57859b6c5e1d?w=600&q=80" alt="Pâtisseries fines">
+                </div>
+                <div class="galerie-item">
+                    <img src="https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=600&q=80" alt="Soirée événementielle">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pourquoi ALBATROS -->
+    <section class="pourquoi">
+        <div class="container">
+            <span class="eyebrow">Notre engagement</span>
+            <h2 class="section-title">Pourquoi nous choisir</h2>
+            <div class="divider"><span class="divider-diamond"></span></div>
+            <div class="pourquoi-grid">
+                <div class="pourquoi-item large">
+                    <div class="pourquoi-icon"><i class="fa-solid fa-gem"></i></div>
+                    <div>
+                        <h3>Service sur-mesure</h3>
+                        <p>Chaque événement est unique. Notre coordinateur dédi vous accompagne de A à Z pour concevoir une celebration qui vous ressemble, dans les moindres détails.</p>
+                    </div>
+                </div>
+                <div class="pourquoi-item">
+                    <div class="pourquoi-icon"><i class="fa-solid fa-utensils"></i></div>
+                    <h3>Cuisine raffinée</h3>
+                    <p>Un menu signature composé par notre chef, à partir de produits frais et de saison, pour régaler vos invités.</p>
+                </div>
+                <div class="pourquoi-item">
+                    <div class="pourquoi-icon"><i class="fa-solid fa-location-dot"></i></div>
+                    <h3>Emplacement privilégié</h3>
+                    <p>Facile d'accès au cœur de la ville, avec parking privé et proximité des grands axes.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Témoignages -->
+    <section class="temoignages">
+        <div class="container">
+            <span class="eyebrow">Témoignages</span>
+            <h2 class="section-title">Ils nous ont fait confiance</h2>
+            <div class="divider"><span class="divider-diamond"></span></div>
+            <div class="temoignages-grid">
+                <div class="temoignage">
+                    <p class="temoignage-quote">Une journée de rêve, parfaitement orchestrée. L'équipe a su comprendre nos attentes et les dépasser. La salle était magnifique, le repas exceptionnel. Nos invités en parlent encore.</p>
+                    <div class="temoignage-author">Sophie et Karim Benali</div>
+                    <div class="temoignage-event">Mariage · Juin 2025</div>
+                </div>
+                <div class="temoignage">
+                    <p class="temoignage-quote">Nous avons célébré les 60 ans de ma mère à ALBATROS. Accueil chaleureux, service impeccable, décoration soignée. Un grand merci à toute l'équipe pour ce moment inoubliable.</p>
+                    <div class="temoignage-author">Nadia Cherif</div>
+                    <div class="temoignage-event">Anniversaire · Mars 2025</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+        <!-- Réservation -->
+        <section class="reservation" id="reservation">
+            <div class="ambient-bg" id="ambientBg"></div>
+            <div class="container">
+                <div class="section-header">
+                    <span class="ui-label">Réservation</span>
+                    <h2>L'art de réserver votre instant</h2>
+                    <div class="ornament">
+                        <div class="ornament-line"></div>
+                        <div class="ornament-diamond"></div>
+                        <div class="ornament-line"></div>
+                    </div>
+                    <p>Choisissez votre date parmi les nuits disponibles. Vos informations restent confidentielles.</p>
+                </div>
+
+                <div class="booking-steps">
+                    <div class="step active" data-step="1">
+                        <div class="step-num">1</div>
+                        <span class="step-text">Choisir la date</span>
+                    </div>
+                    <div class="step" data-step="2">
+                        <div class="step-num">2</div>
+                        <span class="step-text">Vos coordonnées</span>
+                    </div>
+                    <div class="step" data-step="3">
+                        <div class="step-num">3</div>
+                        <span class="step-text">Sceau doré</span>
+                    </div>
+                </div>
+
+                <div class="booking-wrapper">
+                    <!-- STEP 1: CALENDAR -->
+                    <div class="step-content active" data-step="1">
+                        <div class="calendar">
+                            <div class="calendar-header">
+                                <button class="cal-nav" id="prevMonth" aria-label="Mois précédent">
+                                    <i class="fa-solid fa-chevron-left"></i>
+                                </button>
+                                <h3 id="monthLabel"></h3>
+                                <button class="cal-nav" id="nextMonth" aria-label="Mois suivant">
+                                    <i class="fa-solid fa-chevron-right"></i>
+                                </button>
+                            </div>
+                            <div class="calendar-grid" id="calendarGrid"></div>
+
+                            <div class="legend">
+                                <div class="legend-item">
+                                    <div class="legend-swatch available"></div>
+                                    Disponible
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-swatch blocked"></div>
+                                    Déjà réservé
+                                </div>
+                            </div>
+
+                            <div class="status-msg" id="statusMsg"></div>
+                        </div>
+
+                        <div class="form-actions" style="justify-content: flex-end; margin-top: 2rem;">
+                            <button class="btn btn-primary" id="toStep2" disabled style="opacity:0.4;">
+                                Continuer le rituel <i class="fa-solid fa-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- STEP 2: FORM -->
+                    <div class="step-content" data-step="2">
+                        <div class="selected-date-summary">
+                            <div>
+                                <span class="ui-label">Date sélectionnée</span>
+                                <div class="date-text" id="selectedDateText">—</div>
+                            </div>
+                            <button id="changeDateBtn">
+                                <i class="fa-solid fa-pen" style="margin-right: 0.4rem; font-size: 0.65rem;"></i>
+                                Modifier
+                            </button>
+                        </div>
+
+                        <form id="bookingForm">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="firstName">Prénom</label>
+                                    <input type="text" id="firstName" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="lastName">Nom</label>
+                                    <input type="text" id="lastName" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="phone">Téléphone</label>
+                                    <input type="tel" id="phone" required placeholder="+213 ···">
+                                </div>
+                                <div class="form-group">
+                                    <label for="email">Email</label>
+                                    <input type="email" id="email" required>
+                                </div>
+
+                                <!-- Event type as visual cards -->
+                                <div class="form-group full">
+                                    <label>Type d'événement</label>
+                                    <div class="event-selector" id="eventSelector">
+                                        <div class="event-card" data-value="wedding">
+                                            <i class="fa-solid fa-ring"></i>
+                                            <span>Mariage</span>
+                                        </div>
+                                        <div class="event-card" data-value="engagement">
+                                            <i class="fa-solid fa-heart"></i>
+                                            <span>Fiançailles</span>
+                                        </div>
+                                        <div class="event-card" data-value="birthday">
+                                            <i class="fa-solid fa-cake-candles"></i>
+                                            <span>Anniversaire</span>
+                                        </div>
+                                        <div class="event-card" data-value="corporate">
+                                            <i class="fa-solid fa-briefcase"></i>
+                                            <span>Entreprise</span>
+                                        </div>
+                                        <div class="event-card" data-value="other">
+                                            <i class="fa-solid fa-star"></i>
+                                            <span>Autre</span>
+                                        </div>
+                                    </div>
+                                    <input type="hidden" id="eventType">
+                                </div>
+
+                                <div class="form-group full">
+                                    <label for="guests">Nombre d'invités</label>
+                                    <input type="number" id="guests" min="50" max="400" required placeholder="Ex : 150">
+                                </div>
+
+                                <div class="form-group full">
+                                    <label for="notes">Notes ou demandes particulières</label>
+                                    <textarea id="notes" placeholder="Décoration, traiteur, horaires souhaités..."></textarea>
+                                </div>
+                            </div>
+
+                            <div class="pricing-preview-card" style="margin-top: 1.5rem; padding: 1.25rem 1.5rem; background: var(--surface-alt); border: 1px solid var(--border); border-radius: 16px; text-align: left;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                    <span style="font-family: 'Montserrat', sans-serif; font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); font-weight: 500;">Tarif Estimé de la Salle</span>
+                                    <span id="liveTotalPrice" style="font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 600; color: var(--accent);">2 500 TND</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed var(--border); padding-top: 0.5rem; font-size: 0.85rem;">
+                                    <span style="color: var(--text-secondary);">Acompte requis (30% pour bloquer la date) :</span>
+                                    <span id="liveDepositPrice" style="font-weight: 600; color: var(--gold);">750 TND</span>
+                                </div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.4rem;">
+                                    * Le reste du montant (70%) sera réglé sur place le jour de l'événement.
+                                </div>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-outline" id="backToStep1">
+                                    <i class="fa-solid fa-arrow-left"></i> Retour
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    Sceller la réservation <i class="fa-solid fa-stamp"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- STEP 3: CONFIRMATION — Golden Seal -->
+                    <div class="step-content" data-step="3">
+                        <div class="confirmation">
+                            <div class="seal">
+                                <div class="seal-outer"></div>
+                                <div class="seal-inner">
+                                    <i class="fa-solid fa-check"></i>
+                                </div>
+                            </div>
+                            <h3>Votre instant est scellé</h3>
+                            <p>Votre demande a été enregistrée avec succès. Pour accélérer la validation, veuillez envoyer un message de confirmation sur WhatsApp avec les détails ci-dessous.</p>
+
+                            <div class="booking-details-card">
+                                <div class="detail-row">
+                                    <span class="detail-label">Date</span>
+                                    <span class="detail-value" id="confirmDate">—</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Événement</span>
+                                    <span class="detail-value" id="confirmEvent">—</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Invités</span>
+                                    <span class="detail-value" id="confirmGuests">—</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Au nom de</span>
+                                    <span class="detail-value" id="confirmName">—</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Tarif de la Salle</span>
+                                    <span class="detail-value" id="confirmTotal" style="color: var(--accent); font-weight: 600;">—</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Acompte (30%)</span>
+                                    <span class="detail-value" id="confirmDeposit" style="color: var(--gold); font-weight: 600;">—</span>
+                                </div>
+                            </div>
+
+                            <div class="booking-ref" id="bookingRef">ALB-000000</div>
+
+                            <div style="margin-top: 1.5rem; display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+                                <a id="whatsappConfirmBtn" target="_blank" class="btn" style="background: #25D366; color: white; border: none; font-weight: 600; display: inline-flex; align-items: center;">
+                                    <i class="fa-brands fa-whatsapp" style="font-size: 1.2rem; margin-right: 0.5rem;"></i>
+                                    Confirmer via WhatsApp
+                                </a>
+                                <button class="btn btn-outline" onclick="location.reload()">
+                                    <i class="fa-solid fa-rotate-right" style="margin-right: 0.4rem;"></i>
+                                    Nouvelle réservation
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    <!-- Contact -->
+    <section class="contact" id="contact">
+        <div class="container">
+            <div style="text-align: center;">
+                <span class="eyebrow">Contact</span>
+                <h2 class="section-title">Nous trouver</h2>
+                <div class="divider"><span class="divider-diamond"></span></div>
+            </div>
+            <div class="contact-grid">
+                <div class="contact-info">
+                    <h3>Informations pratiques</h3>
+                    <div class="contact-item">
+                        <div class="contact-item-icon"><i class="fa-solid fa-location-dot"></i></div>
+                        <div>
+                            <div class="contact-item-label">Adresse</div>
+                            <div class="contact-item-value">Av Complexe Sportif,<br>Manouba 2010, Tunisie</div>
+                        </div>
+                    </div>
+                    <div class="contact-item">
+                        <div class="contact-item-icon"><i class="fa-solid fa-phone"></i></div>
+                        <div>
+                            <div class="contact-item-label">Téléphone</div>
+                            <div class="contact-item-value">+216 98 687 124<br>+216 20 247 599</div>
+                        </div>
+                    </div>
+                    <div class="contact-item">
+                        <div class="contact-item-icon"><i class="fa-solid fa-envelope"></i></div>
+                        <div>
+                            <div class="contact-item-label">Email</div>
+                            <div class="contact-item-value">albatros.manouba@gmail.com</div>
+                        </div>
+                    </div>
+                    <div class="contact-item">
+                        <div class="contact-item-icon"><i class="fa-brands fa-facebook"></i></div>
+                        <div>
+                            <div class="contact-item-label">Réseaux sociaux</div>
+                            <div class="contact-item-value">Salle Des Fêtes Albatros (Manouba)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hours-card">
+                    <h3>Horaires d'ouverture</h3>
+                    <div class="hours-section">
+                        <div class="hours-section-title">Bureau des réservations</div>
+                        <div class="hours-row">
+                            <span class="day">Lundi - Samedi</span>
+                            <span class="time">09h00 - 18h00</span>
+                        </div>
+                        <div class="hours-row">
+                            <span class="day">Dimanche</span>
+                            <span class="time">Sur rendez-vous</span>
+                        </div>
+                    </div>
+                    <div class="hours-section">
+                        <div class="hours-section-title">Salle Des Fêtes (Événements)</div>
+                        <div class="hours-row">
+                            <span class="day">Lundi - Jeudi</span>
+                            <span class="time">Sur réservation</span>
+                        </div>
+                        <div class="hours-row">
+                            <span class="day">Vendredi - Samedi</span>
+                            <span class="time">11h00 - 03h00</span>
+                        </div>
+                        <div class="hours-row">
+                            <span class="day">Dimanche</span>
+                            <span class="time">11h00 - 23h00</span>
+                        </div>
+                    </div>
+                    <div class="hours-section" style="margin-bottom: 0;">
+                        <div class="hours-section-title">Visite de la Salle</div>
+                        <div class="hours-row">
+                            <span class="day">Tous les jours</span>
+                            <span class="time">Sur rendez-vous</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-grid">
+            <div class="footer-brand">
+                <span class="logo-mark">ALBATROS</span>
+                <span class="logo-sub" style="color: var(--rose);">Salle Des Fêtes</span>
+                <p>L'art de célébrer les moments qui comptent. Une salle d'exception et un service traiteur haut de gamme à Manouba pour tous vos grands événements.</p>
+                <div class="footer-social">
+                    <a href="https://www.facebook.com/salle.albatros.manouba" target="_blank" aria-label="Facebook"><i class="fa-brands fa-facebook-f"></i></a>
+                    <a href="#" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+                    <a href="#" aria-label="TikTok"><i class="fa-brands fa-tiktok"></i></a>
+                    <a href="https://wa.me/21698687124" target="_blank" aria-label="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>
+                </div>
+            </div>
+            <div class="footer-col">
+                <h4>Navigation</h4>
+                <ul>
+                    <li><a href="#accueil">Accueil</a></li>
+                    <li><a href="#salle-lounge">Lounge & Traiteur</a></li>
+                    <li><a href="#salle">La Salle</a></li>
+                    <li><a href="#galerie">Galerie</a></li>
+                    <li><a href="#reservation">Réservation</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Informations</h4>
+                <ul>
+                    <li><a href="#contact">Contact</a></li>
+                    <li><a href="#contact">Horaires</a></li>
+                    <li><a href="#salle">Capacité</a></li>
+                    <li><a href="#reservation">Vérifier une date</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            © 2026 ALBATROS · Salle Des Fêtes · Tous droits réservés
+        </div>
+    </footer>
+
+    <script>
+        // Menu mobile
+        const menuToggle = document.getElementById('menuToggle');
+        const navLinks = document.getElementById('navLinks');
+        menuToggle.addEventListener('click', () => {
+            navLinks.classList.toggle('open');
+            menuToggle.innerHTML = navLinks.classList.contains('open') 
+                ? '<i class="fa-solid fa-xmark"></i>' 
+                : '<i class="fa-solid fa-bars"></i>';
+        });
+        navLinks.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                navLinks.classList.remove('open');
+                menuToggle.innerHTML = '<i class="fa-solid fa-bars"></i>';
+            });
+        });
+
+        // ==========================================
+        // LOCAL DATABASE PERSISTENCE (localStorage)
+        // ==========================================
+        function initDatabase() {
+            if (!localStorage.getItem('albatros_bookings')) {
+                const demoBookings = [
+                    {
+                        id: 'ALB-653921',
+                        firstName: 'Mohamed',
+                        lastName: 'Trabelsi',
+                        phone: '+216 95 123 456',
+                        email: 'm.trabelsi@gmail.com',
+                        date: '2026-07-11',
+                        eventType: 'wedding',
+                        guests: 250,
+                        notes: 'Décoration dorée et blanche. Traiteur externe.',
+                        status: 'confirmed',
+                        price: 2500,
+                        deposit: 750,
+                        balance: 1750,
+                        createdAt: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString()
+                    },
+                    {
+                        id: 'ALB-872103',
+                        firstName: 'Amira',
+                        lastName: 'Chaabane',
+                        phone: '+216 22 789 012',
+                        email: 'amira.chaabane@yahoo.fr',
+                        date: '2026-07-18',
+                        eventType: 'engagement',
+                        guests: 180,
+                        notes: 'Musique traditionnelle tunisienne requise.',
+                        status: 'pending',
+                        price: 1800,
+                        deposit: 540,
+                        balance: 1260,
+                        createdAt: new Date().toISOString()
+                    }
+                ];
+                localStorage.setItem('albatros_bookings', JSON.stringify(demoBookings));
+            }
+            if (!localStorage.getItem('albatros_blocked_dates')) {
+                const demoBlocked = [
+                    { date: '2026-06-29', reason: 'Maintenance' },
+                    { date: '2026-07-04', reason: 'Événement privé du propriétaire' }
+                ];
+                localStorage.setItem('albatros_blocked_dates', JSON.stringify(demoBlocked));
+            }
+        }
+        initDatabase();
+
+        function getBookings() {
+            return JSON.parse(localStorage.getItem('albatros_bookings') || '[]');
+        }
+
+        function saveBookings(bookings) {
+            localStorage.setItem('albatros_bookings', JSON.stringify(bookings));
+        }
+
+        function getAdminBlockedDates() {
+            return JSON.parse(localStorage.getItem('albatros_blocked_dates') || '[]');
+        }
+
+        function saveAdminBlockedDates(dates) {
+            localStorage.setItem('albatros_blocked_dates', JSON.stringify(dates));
+        }
+
+        function isDateBlocked(dateKey) {
+            const bookings = getBookings();
+            const adminBlocked = getAdminBlockedDates();
+            
+            const hasBooking = bookings.some(b => b.date === dateKey && b.status !== 'cancelled');
+            const hasAdminBlock = adminBlocked.some(ab => ab.date === dateKey);
+            
+            return hasBooking || hasAdminBlock;
+        }
+
+        // ==========================================
+        // PRICING SYSTEM & INITIAL STATE
+        // ==========================================
+        const prices = {
+            wedding: 2500,
+            engagement: 1800,
+            birthday: 1500,
+            corporate: 2000,
+            other: 1500
+        };
+
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        let currentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const minMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const maxMonth = new Date(today.getFullYear(), today.getMonth() + 6, 1); // 6 months booking window
+
+        let selectedDate = null;
+
+        const monthLabel = document.getElementById('monthLabel');
+        const calendarGrid = document.getElementById('calendarGrid');
+        const prevBtn = document.getElementById('prevMonth');
+        const nextBtn = document.getElementById('nextMonth');
+        const statusMsg = document.getElementById('statusMsg');
+        const toStep2Btn = document.getElementById('toStep2');
+
+        const months = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+        const dayNames = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+        const eventLabels = {
+            wedding: 'Mariage', engagement: 'Fiançailles', birthday: 'Anniversaire',
+            corporate: 'Entreprise', other: 'Autre célébration'
+        };
+
+        function formatDateKey(d) {
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        }
+        function formatNiceDate(d) {
+            return `${dayNames[(d.getDay()+6)%7]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+        }
+
+        function updateLivePrice() {
+            const eventType = document.getElementById('eventType').value || 'wedding';
+            const price = prices[eventType] || 1500;
+            const deposit = Math.round(price * 0.3);
+            
+            document.getElementById('liveTotalPrice').textContent = `${price.toLocaleString('fr-TN')} TND`;
+            document.getElementById('liveDepositPrice').textContent = `${deposit.toLocaleString('fr-TN')} TND`;
+        }
+
+        // ==========================================
+        // CALENDAR RENDERING ENGINE
+        // ==========================================
+        function renderCalendar() {
+            calendarGrid.innerHTML = '';
+            monthLabel.textContent = `${months[currentMonth.getMonth()]} ${currentMonth.getFullYear()}`;
+
+            dayNames.forEach(dn => {
+                const el = document.createElement('div');
+                el.className = 'cal-day-name';
+                el.textContent = dn;
+                calendarGrid.appendChild(el);
+            });
+
+            const year = currentMonth.getFullYear();
+            const month = currentMonth.getMonth();
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const startOffset = (firstDay.getDay() + 6) % 7;
+
+            for (let i = 0; i < startOffset; i++) {
+                const el = document.createElement('div');
+                el.className = 'cal-day empty';
+                calendarGrid.appendChild(el);
+            }
+
+            for (let day = 1; day <= lastDay.getDate(); day++) {
+                const date = new Date(year, month, day);
+                const key = formatDateKey(date);
+                const el = document.createElement('button');
+                el.className = 'cal-day';
+                el.type = 'button';
+                el.textContent = day;
+
+                const isToday = date.getTime() === today.getTime();
+                const isPast = date < today;
+                const isBlockedDate = isDateBlocked(key);
+                const isSelected = selectedDate && formatDateKey(selectedDate) === key;
+
+                if (isToday) el.classList.add('today');
+                if (isPast) {
+                    el.classList.add('past');
+                    el.disabled = true;
+                } else if (isBlockedDate) {
+                    el.classList.add('blocked');
+                    el.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        showStatus('blocked', `Le ${formatNiceDate(date)} est déjà réservé. Choisissez une autre date.`);
+                    });
+                } else {
+                    el.addEventListener('click', () => {
+                        selectedDate = date;
+                        renderCalendar();
+                        showStatus('available', `Parfait ! Le ${formatNiceDate(date)} est disponible.`);
+                        toStep2Btn.disabled = false;
+                        toStep2Btn.style.opacity = '1';
+                    });
+                }
+                if (isSelected) el.classList.add('selected');
+
+                calendarGrid.appendChild(el);
+            }
+
+            prevBtn.disabled = currentMonth <= minMonth;
+            nextBtn.disabled = currentMonth >= maxMonth;
+        }
+
+        function showStatus(type, message) {
+            statusMsg.className = `status-msg show ${type}`;
+            const icon = type === 'available' ? 'fa-circle-check' : 'fa-circle-xmark';
+            statusMsg.innerHTML = `<i class="fa-solid ${icon}"></i> ${message}`;
+        }
+
+        prevBtn.addEventListener('click', () => {
+            currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
+            renderCalendar();
+        });
+        nextBtn.addEventListener('click', () => {
+            currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
+            renderCalendar();
+        });
+
+        // === Event selector cards ===
+        document.querySelectorAll('.event-card').forEach(card => {
+            card.addEventListener('click', () => {
+                document.querySelectorAll('.event-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                document.getElementById('eventType').value = card.dataset.value;
+                updateLivePrice();
+            });
+        });
+
+        // Set default event type
+        const defaultCard = document.querySelector('.event-card[data-value="wedding"]');
+        if (defaultCard) {
+            defaultCard.classList.add('selected');
+            document.getElementById('eventType').value = 'wedding';
+            updateLivePrice();
+        }
+
+        // === Step navigation with progress ===
+        function goToStep(step) {
+            document.querySelectorAll('.step-content').forEach(el => el.classList.remove('active'));
+            document.querySelector(`.step-content[data-step="${step}"]`).classList.add('active');
+
+            document.querySelectorAll('.booking-steps .step').forEach(el => {
+                const s = parseInt(el.dataset.step);
+                el.classList.remove('active', 'completed');
+                if (s < step) {
+                    el.classList.add('completed');
+                    el.querySelector('.step-num').innerHTML = '<i class="fa-solid fa-check"></i>';
+                } else if (s === step) {
+                    el.classList.add('active');
+                    el.querySelector('.step-num').textContent = s;
+                } else {
+                    el.querySelector('.step-num').textContent = s;
+                }
+            });
+
+            const wrapper = document.querySelector('.booking-wrapper');
+            const y = wrapper.getBoundingClientRect().top + window.scrollY - 100;
+            window.scrollTo({ top: y, behavior: 'smooth' });
+        }
+
+        toStep2Btn.addEventListener('click', () => {
+            document.getElementById('selectedDateText').textContent = formatNiceDate(selectedDate);
+            goToStep(2);
+        });
+        document.getElementById('backToStep1').addEventListener('click', () => goToStep(1));
+        document.getElementById('changeDateBtn').addEventListener('click', () => goToStep(1));
+
+        // === Form submit ===
+        document.getElementById('bookingForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const firstName = document.getElementById('firstName').value;
+            const lastName = document.getElementById('lastName').value;
+            const phone = document.getElementById('phone').value;
+            const email = document.getElementById('email').value;
+            const eventType = document.getElementById('eventType').value;
+            const guests = parseInt(document.getElementById('guests').value);
+            const notes = document.getElementById('notes').value;
+
+            if (!eventType) {
+                alert('Veuillez sélectionner un type d\'événement.');
+                return;
+            }
+
+            // Generate reference ALB-XXXXXX
+            const ref = 'ALB-' + (100000 + Math.floor(Math.random() * 900000));
+            document.getElementById('bookingRef').textContent = ref;
+
+            // Price calculation
+            const price = prices[eventType] || 1500;
+            const deposit = Math.round(price * 0.3);
+            const balance = price - deposit;
+
+            // Fill confirmation details
+            document.getElementById('confirmDate').textContent = formatNiceDate(selectedDate);
+            document.getElementById('confirmEvent').textContent = eventLabels[eventType] || '—';
+            document.getElementById('confirmGuests').textContent = guests + ' invités';
+            document.getElementById('confirmName').textContent = `${firstName} ${lastName}`;
+            document.getElementById('confirmTotal').textContent = `${price.toLocaleString('fr-TN')} TND`;
+            document.getElementById('confirmDeposit').textContent = `${deposit.toLocaleString('fr-TN')} TND`;
+
+            // Create new booking object
+            const newBooking = {
+                id: ref,
+                firstName,
+                lastName,
+                phone,
+                email,
+                date: formatDateKey(selectedDate),
+                eventType,
+                guests,
+                notes,
+                status: 'pending', // pending, confirmed, cancelled
+                price,
+                deposit,
+                balance,
+                createdAt: new Date().toISOString()
+            };
+
+            // Save to localStorage
+            const bookings = getBookings();
+            bookings.push(newBooking);
+            saveBookings(bookings);
+
+            // Re-render calendar to block this date
+            renderCalendar();
+
+            // Set up WhatsApp button action
+            const whatsappText = `Bonjour ALBATROS,\nJe souhaite confirmer ma réservation pour le ${formatNiceDate(selectedDate)}.\n\nRéférence: ${ref}\nÉvénement: ${eventLabels[eventType]}\nNom: ${firstName} ${lastName}\nTéléphone: ${phone}\nInvités: ${guests} personnes\nTarif total: ${price} TND (Acompte 30%: ${deposit} TND)`;
+            
+            const waBtn = document.getElementById('whatsappConfirmBtn');
+            if (waBtn) {
+                const cleanPhone = '21698687124';
+                waBtn.href = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(whatsappText)}`;
+            }
+
+            goToStep(3);
+        });
+
+        // === Generate ambient particles ===
+        function createParticles() {
+            const bg = document.getElementById('ambientBg');
+            if(!bg) return;
+            bg.innerHTML = ''; // Clear old particles
+            for (let i = 0; i < 25; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                p.style.left = Math.random() * 100 + '%';
+                p.style.animationDelay = Math.random() * 15 + 's';
+                p.style.animationDuration = (10 + Math.random() * 10) + 's';
+                const colors = ['var(--rose)', 'var(--mauve)', 'var(--gold)'];
+                p.style.background = colors[Math.floor(Math.random() * 3)];
+                bg.appendChild(p);
+            }
+        }
+
+        createParticles();
+        renderCalendar();
+    </script>
+</body>
+</html>

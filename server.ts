@@ -23,10 +23,14 @@ if (!process.env.JWT_SECRET) {
 // Load environment variables
 dotenv.config();
 
-// Create local data directories if they don't exist
-const DATA_DIR = path.join(process.cwd(), "data");
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+// Create local data directories if they don't exist (use /tmp on Vercel)
+const DATA_DIR = path.join(process.env.VERCEL ? "/tmp" : process.cwd(), "data");
+try {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+} catch (err) {
+  console.warn("WARNING: Could not create local data directory. If using Supabase, this is fine on Vercel.");
 }
 
 const BOOKINGS_FILE = path.join(DATA_DIR, "bookings.json");

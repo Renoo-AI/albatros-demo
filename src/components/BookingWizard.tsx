@@ -111,8 +111,8 @@ export function BookingWizard() {
         setIsVerified(true);
         toast.success("Date disponible !");
       }
-    } catch (err) {
-      setVerificationError("Impossible de vérifier la disponibilité. Veuillez réessayer.");
+    } catch (err: any) {
+      setVerificationError(err.message || "Impossible de vérifier la disponibilité.");
     } finally {
       setCheckingAvailability(false);
     }

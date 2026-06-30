@@ -29,10 +29,17 @@ export interface UnavailableDate {
 }
 
 export async function fetchAvailability(): Promise<string[]> {
-  const res = await fetch("/api/availability");
-  if (!res.ok) throw new Error("Failed to fetch availability");
-  const data: UnavailableDate[] = await res.json();
-  return data.map((d) => d.event_date);
+  try {
+    const res = await fetch("/api/availability");
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Erreur serveur (${res.status}): ${text.substring(0, 100)}`);
+    }
+    const data: UnavailableDate[] = await res.json();
+    return data.map((d) => d.event_date);
+  } catch (err: any) {
+    throw new Error(`Erreur réseau: ${err.message}`);
+  }
 }
 
 export interface PaymentIntentResult {

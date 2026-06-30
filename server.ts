@@ -1358,5 +1358,6 @@ async function startServer() {
     });
   }
 }
-
-startServer();
+startServer().catch((err) => {
+  console.error("Fatal error in startServer:", err);
+});

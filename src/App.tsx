@@ -270,23 +270,61 @@ export default function App() {
     );
   }
 
+  if (currentPath === "/" || currentPath === "") {
+    return (
+      <div className="min-h-screen bg-white dark:bg-zinc-950">
+        <TopLoadingBar key={loadingKey} />
+        <Header />
+
+        <Hero />
+        <WelcomeIntro />
+        <MarqueeBanner />
+        <LoungeSection />
+        <SalleSection />
+        <Galerie />
+        <Testimonials />
+        <InfoSection />
+        <CtaBanner />
+
+        <Footer />
+        <BackToTop />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-white dark:bg-zinc-950">
+    <div className="min-h-[100dvh] bg-zinc-50 dark:bg-zinc-950 flex flex-col">
       <TopLoadingBar key={loadingKey} />
       <Header />
-
-      <Hero />
-      <WelcomeIntro />
-      <MarqueeBanner />
-      <LoungeSection />
-      <SalleSection />
-      <Galerie />
-      <Testimonials />
-      <InfoSection />
-      <CtaBanner />
-
+      <div className="flex-1 flex items-center justify-center px-6">
+        <div className="max-w-lg text-center space-y-8 animate-fade-in py-20">
+          <h1 className="font-display text-8xl md:text-9xl text-[#C6A969] font-medium tracking-tight">
+            404
+          </h1>
+          <div className="space-y-4">
+            <h2 className="font-display text-3xl md:text-4xl text-zinc-950 dark:text-white font-medium">
+              Page Introuvable
+            </h2>
+            <p className="text-zinc-600 dark:text-zinc-400 text-base md:text-lg leading-relaxed">
+              Désolé, la page que vous cherchez n'existe pas ou a été déplacée.
+            </p>
+          </div>
+          <div className="pt-4">
+            <a
+              href="/"
+              onClick={(e) => {
+                e.preventDefault();
+                window.history.pushState({}, "", "/");
+              }}
+              className="btn btn-gold inline-flex items-center gap-2"
+            >
+              <i className="fa-solid fa-arrow-left"></i>
+              Retour à l'accueil
+            </a>
+          </div>
+        </div>
+      </div>
       <Footer />
-      <BackToTop />
     </div>
   );
 }

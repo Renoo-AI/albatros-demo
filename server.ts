@@ -2,7 +2,6 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import dotenv from "dotenv";
-import { createServer as createViteServer } from "vite";
 import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 import helmet from "helmet";
@@ -142,8 +141,12 @@ function getSupabase() {
     const url = process.env.SUPABASE_URL;
     const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
     if (url && key) {
-      supabaseClient = createClient(url, key);
-      console.log("Supabase Client initialized successfully.");
+      try {
+        supabaseClient = createClient(url, key);
+        console.log("Supabase Client initialized successfully.");
+      } catch (err: any) {
+        console.error("Failed to initialize Supabase Client:", err.message);
+      }
     } else {
       console.log("Supabase URL or Publishable Key is missing. Falling back to Local Database.");
     }
@@ -156,8 +159,12 @@ function getSupabaseAdmin() {
     const url = process.env.SUPABASE_URL;
     const secret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (url && secret) {
-      supabaseAdmin = createClient(url, secret);
-      console.log("Supabase Admin initialized successfully.");
+      try {
+        supabaseAdmin = createClient(url, secret);
+        console.log("Supabase Admin initialized successfully.");
+      } catch (err: any) {
+        console.error("Failed to initialize Supabase Admin:", err.message);
+      }
     } else {
       console.log("Supabase Secret Key is missing.");
     }
@@ -1295,8 +1302,13 @@ async function startServer() {
   });
 
 
-  // Vite middleware for development
+  // API Catch-all
+  app.all("/api/*", (req, res) => {
+    res.status(404).json({ error: "API Route Not Found", url: req.url, originalUrl: req.originalUrl });
+  });
+
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -1304,8 +1316,13 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
+    if (!process.env.VERCEL) {
+      app.use(express.static(distPath));
+    }
     app.get("*", (req, res) => {
+      if (process.env.VERCEL) {
+        return res.status(404).send("Not Found");
+      }
       res.sendFile(path.join(distPath, "index.html"));
     });
   }

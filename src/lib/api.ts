@@ -6,6 +6,8 @@ import type { Booking, BlockedDate, BusinessSettings, BookingStatus } from "../t
 export interface ConfigStatus {
   supabase: boolean;
   stripe: boolean;
+  flouci: boolean;
+  konnect: boolean;
   appUrl: string;
 }
 
@@ -37,6 +39,8 @@ export interface PaymentIntentResult {
   clientSecret: string;
   paymentIntentId: string;
   mock?: boolean;
+  paymentUrl?: string;
+  transactionReference?: string;
 }
 
 export async function createPaymentIntent(eventType: string): Promise<PaymentIntentResult> {
@@ -52,6 +56,22 @@ export async function createPaymentIntent(eventType: string): Promise<PaymentInt
   return res.json();
 }
 
+export interface FlouciPaymentRequest {
+  amountInCents: number;
+  currency: string;
+  successUrl: string;
+  failureUrl: string;
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
+}
+
+export interface FlouciPaymentResult {
+  paymentUrl?: string;
+  transactionReference?: string;
+  success: boolean;
+}
+
 export interface CreateBookingInput {
   firstName: string;
   lastName: string;
@@ -63,12 +83,14 @@ export interface CreateBookingInput {
   notes?: string;
   paymentIntentId?: string;
   bot_field?: string;
+  paymentMethod?: string;
 }
 
 export interface CreateBookingResult {
   ref: string;
   success: boolean;
   mock?: boolean;
+  paymentUrl?: string;
 }
 
 export async function createBooking(input: CreateBookingInput): Promise<CreateBookingResult> {
@@ -152,6 +174,18 @@ export async function deleteBooking(id: string): Promise<void> {
   if (!res.ok) throw new Error("Failed to delete booking");
 }
 
+export async function editBooking(id: string, updates: Partial<Booking>): Promise<void> {
+  const res = await fetch("/api/admin/edit-booking", {
+    method: "POST",
+    headers: getAdminHeaders(),
+    body: JSON.stringify({ id, ...updates }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || "Failed to edit booking");
+  }
+}
+
 export async function clearDatabase(): Promise<void> {
   const res = await fetch("/api/admin/clear-db", { 
     method: "POST",
@@ -184,7 +218,71 @@ export async function executeSQL(sql: string): Promise<SQLResult> {
   });
   if (!res.ok) {
     const err = await res.json();
-    throw new Error(err.error || "Une erreur est survenue lors de l'exécution SQL");
+    throw new Error(err.error || "Une erreur est survenue lors de l\'exécution SQL");
   }
   return res.json();
+}
+
+export async function createFlouciPayment(request: FlouciPaymentRequest): Promise<FlouciPaymentResult> {
+  const res = await fetch("/api/flouci-payment", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || "Failed to create Flouci payment");
+  }
+  return res.json();
+}
+
+export async function getFlouciTransactionStatus(transactionReference: string): Promise<any> {
+  const res = await fetch("/api/flouci-transaction-status", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ transactionReference }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || "Failed to get transaction status");
+  }
+  return res.json();
+}
+
+export async function verifyAdminPayment(id: string): Promise<boolean> {
+  const res = await fetch("/api/admin/verify-payment", {
+    method: "POST",
+    headers: getAdminHeaders(),
+    body: JSON.stringify({ id }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || "Failed to verify payment status");
+  }
+  const data = await res.json();
+  return data.success;
+}
+
+export async function refundBooking(id: string): Promise<void> {
+  const res = await fetch("/api/admin/refund-booking", {
+    method: "POST",
+    headers: getAdminHeaders(),
+    body: JSON.stringify({ id }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || "Failed to refund booking");
+  }
+}
+
+export async function recordManualPayment(id: string, method: string): Promise<void> {
+  const res = await fetch("/api/admin/manual-pay", {
+    method: "POST",
+    headers: getAdminHeaders(),
+    body: JSON.stringify({ id, method }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || "Failed to record manual payment");
+  }
 }

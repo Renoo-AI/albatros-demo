@@ -17,6 +17,13 @@ CREATE TABLE IF NOT EXISTS public.bookings (
     balance_amount NUMERIC(10, 2) NOT NULL,
     status VARCHAR(50) DEFAULT 'pending',
     stripe_payment_intent_id VARCHAR(255),
+    payment_gateway VARCHAR(50) DEFAULT 'stripe',
+    gateway_reference VARCHAR(255),
+    gateway_status VARCHAR(50) DEFAULT 'pending',
+    flouci_payment_id VARCHAR(255),
+    flouci_transaction_reference VARCHAR(255),
+    flouci_transaction_id VARCHAR(255),
+    flouci_payment_url VARCHAR(1024),
     paid_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc', now())
 );

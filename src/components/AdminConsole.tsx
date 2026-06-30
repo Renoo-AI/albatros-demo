@@ -16,6 +16,10 @@ import {
   fetchSettings,
   fetchConfigStatus,
   executeSQL,
+  editBooking,
+  verifyAdminPayment,
+  refundBooking,
+  recordManualPayment,
   type ConfigStatus,
   type SQLResult
 } from "../lib/api";
@@ -64,6 +68,20 @@ export function AdminConsole() {
 
   // Modal Detail view
   const [activeBookingId, setActiveBookingId] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    date: "",
+    guests: 0,
+    notes: "",
+    price: 0,
+    deposit: 0,
+    balance: 0,
+    status: "pending" as BookingStatus
+  });
 
   // Tab control
   const [activeTab, setActiveTab] = useState<"dashboard" | "sql">("dashboard");
@@ -149,6 +167,64 @@ export function AdminConsole() {
     setPassword("");
   };
 
+  const exportToCSV = () => {
+    const headers = ["Ref", "Date", "Prenom", "Nom", "Telephone", "Email", "Event", "Montant", "Acompte", "Solde", "Statut", "Creation"];
+    const rows = bookings.map((b) => [
+      b.id,
+      b.date,
+      b.firstName,
+      b.lastName,
+      `"${b.phone}"`,
+      b.email,
+      b.eventType,
+      b.price,
+      b.deposit,
+      b.balance,
+      b.status,
+      b.createdAt
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `reservations_albatros_${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("CSV exporté avec succès !");
+  };
+
+  const startEditing = (b: Booking) => {
+    setEditForm({
+      firstName: b.firstName,
+      lastName: b.lastName,
+      email: b.email,
+      phone: b.phone,
+      date: b.date,
+      guests: b.guests,
+      notes: b.notes || "",
+      price: b.price,
+      deposit: b.deposit,
+      balance: b.balance,
+      status: b.status
+    });
+    setIsEditing(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeBookingId) return;
+    try {
+      await editBooking(activeBookingId, editForm);
+      toast.success("Réservation modifiée avec succès !");
+      setIsEditing(false);
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message || "Erreur lors de la modification");
+    }
+  };
+
   // Analytics folded stats
   const stats = useMemo(() => {
     const active = bookings.filter((b) => b.status !== "cancelled");
@@ -176,6 +252,20 @@ export function AdminConsole() {
 
     return { totalBookings, revenue, deposits, occupancy };
   }, [bookings, blockedDates]);
+
+  const categoryBreakdown = useMemo(() => {
+    const counts: Record<string, number> = { "Mariage": 0, "Soirée": 0, "Entreprise": 0, "Anniversaire": 0, "Autre": 0 };
+    let maxVal = 1;
+    bookings.forEach((b) => {
+      if (b.status !== "cancelled") {
+        const type = b.eventType || "Autre";
+        if (counts[type] !== undefined) counts[type]++;
+        else counts["Autre"]++;
+      }
+    });
+    maxVal = Math.max(...Object.values(counts), 1);
+    return { counts, maxVal };
+  }, [bookings]);
 
   // Filters on lists
   const filteredBookings = useMemo(() => {
@@ -497,6 +587,12 @@ export function AdminConsole() {
               <h2 className="font-display text-2xl text-[#1C1C1C] font-semibold italic">
                 Toutes les réservations
               </h2>
+              <button
+                onClick={exportToCSV}
+                className="px-4 py-2 bg-zinc-900 text-white hover:bg-zinc-800 text-xs font-mono uppercase tracking-wider font-semibold rounded-lg flex items-center gap-2 transition-all cursor-pointer"
+              >
+                <i className="fa-solid fa-download"></i> Exporter CSV
+              </button>
             </div>
 
             {/* Filter controls */}
@@ -708,7 +804,7 @@ export function AdminConsole() {
 
             {/* Blocked list direct view */}
             <div className="glass-panel p-6 text-left">
-              <h3 className="font-display text-lg text-zinc-950 dark:text-white font-semibold mb-4">
+              <h3 className="font-display text-lg text-[#1C1C1C] font-semibold mb-4">
                 Dates Bloquées
               </h3>
               <div className="space-y-3 max-h-60 overflow-y-auto">
@@ -733,6 +829,29 @@ export function AdminConsole() {
               </div>
             </div>
 
+            {/* Visual Analytics Charts */}
+            <div className="glass-panel p-6 text-left space-y-6">
+              <h3 className="font-display text-lg font-semibold text-zinc-950">
+                Répartition des Événements
+              </h3>
+              <div className="space-y-4">
+                {Object.entries(categoryBreakdown.counts).map(([cat, count]) => {
+                  const pct = Math.round(((count as number) / categoryBreakdown.maxVal) * 100);
+                  return (
+                    <div key={cat} className="space-y-1">
+                      <div className="flex justify-between text-xs font-mono font-medium">
+                        <span>{cat}</span>
+                        <span className="text-zinc-500">{count} événements</span>
+                      </div>
+                      <div className="w-full bg-zinc-100 h-2 rounded-full overflow-hidden">
+                        <div className="bg-[#9D8159] h-full rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
                       </div>
         </div>
       </>
@@ -744,80 +863,253 @@ export function AdminConsole() {
           <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-none w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] animate-fade-in">
             <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-white dark:bg-zinc-900">
               <h3 className="font-display font-medium text-xl text-zinc-950 dark:text-white">
-                Détails de la réservation
+                {isEditing ? "Modifier la réservation" : "Détails de la réservation"}
               </h3>
               <button 
-                onClick={() => setActiveBookingId(null)}
+                onClick={() => {
+                  setActiveBookingId(null);
+                  setIsEditing(false);
+                }}
                 className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
               >
                 <i className="fa-solid fa-xmark text-xl"></i>
               </button>
             </div>
             
-            <div className="p-6 overflow-y-auto bg-zinc-50 dark:bg-zinc-950">
-              <div className="grid grid-cols-2 gap-6 mb-8 text-sm">
-                <div>
-                  <div className="text-zinc-500 dark:text-zinc-400 font-mono text-[10px] uppercase tracking-wider mb-1">Réf</div>
-                  <div className="font-mono text-zinc-950 dark:text-white font-medium">{activeBooking.id}</div>
-                </div>
-                <div>
-                  <div className="text-zinc-500 dark:text-zinc-400 font-mono text-[10px] uppercase tracking-wider mb-1">Date</div>
-                  <div className="font-semibold text-zinc-950 dark:text-white">{activeBooking.date}</div>
-                </div>
-                <div>
-                  <div className="text-zinc-500 dark:text-zinc-400 font-mono text-[10px] uppercase tracking-wider mb-1">Client</div>
-                  <div className="font-semibold text-zinc-950 dark:text-white">{activeBooking.firstName} {activeBooking.lastName}</div>
-                </div>
-                <div>
-                  <div className="text-zinc-500 dark:text-zinc-400 font-mono text-[10px] uppercase tracking-wider mb-1">Email</div>
-                  <div className="text-zinc-950 dark:text-white">{activeBooking.email}</div>
-                </div>
-                <div>
-                  <div className="text-zinc-500 dark:text-zinc-400 font-mono text-[10px] uppercase tracking-wider mb-1">Téléphone</div>
-                  <div className="text-zinc-950 dark:text-white">{activeBooking.phone}</div>
-                </div>
-                <div className="col-span-2 md:col-span-1">
-                  <div className="text-zinc-500 dark:text-zinc-400 font-mono text-[10px] uppercase tracking-wider mb-1">Stripe Payment Intent</div>
-                  <div className="text-[10px] font-mono text-zinc-600 dark:text-zinc-400 break-all bg-white dark:bg-zinc-900 p-2 border border-zinc-200 dark:border-zinc-800">{activeBooking.stripe_payment_intent_id || "N/A"}</div>
-                </div>
+            <form onSubmit={handleSaveEdit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="p-6 overflow-y-auto bg-zinc-50 dark:bg-zinc-950 flex-1">
+                {isEditing ? (
+                  <div className="grid grid-cols-2 gap-6 text-sm">
+                    <div className="flex flex-col text-left">
+                      <label className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">Prénom</label>
+                      <input type="text" required value={editForm.firstName} onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })} className="input-lux" />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <label className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">Nom</label>
+                      <input type="text" required value={editForm.lastName} onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })} className="input-lux" />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <label className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">Email</label>
+                      <input type="email" required value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} className="input-lux" />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <label className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">Téléphone</label>
+                      <input type="text" required value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} className="input-lux" />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <label className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">Date (AAAA-MM-JJ)</label>
+                      <input type="text" required value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} className="input-lux" />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <label className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">Invités</label>
+                      <input type="number" required value={editForm.guests} onChange={(e) => setEditForm({ ...editForm, guests: parseInt(e.target.value) || 0 })} className="input-lux" />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <label className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">Tarif Total (TND)</label>
+                      <input type="number" required value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: parseInt(e.target.value) || 0 })} className="input-lux" />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <label className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">Acompte (TND)</label>
+                      <input type="number" required value={editForm.deposit} onChange={(e) => setEditForm({ ...editForm, deposit: parseInt(e.target.value) || 0 })} className="input-lux" />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <label className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">Solde (TND)</label>
+                      <input type="number" required value={editForm.balance} onChange={(e) => setEditForm({ ...editForm, balance: parseInt(e.target.value) || 0 })} className="input-lux" />
+                    </div>
+                    <div className="flex flex-col text-left col-span-2">
+                      <label className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">Notes</label>
+                      <textarea value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} rows={2} className="input-lux" />
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 gap-6 mb-8 text-sm">
+                      <div>
+                        <div className="text-zinc-500 dark:text-zinc-400 font-mono text-[10px] uppercase tracking-wider mb-1">Réf</div>
+                        <div className="font-mono text-zinc-950 dark:text-white font-medium">{activeBooking.id}</div>
+                      </div>
+                      <div>
+                        <div className="text-zinc-500 dark:text-zinc-400 font-mono text-[10px] uppercase tracking-wider mb-1">Date</div>
+                        <div className="font-semibold text-zinc-950 dark:text-white">{activeBooking.date}</div>
+                      </div>
+                      <div>
+                        <div className="text-zinc-500 dark:text-zinc-400 font-mono text-[10px] uppercase tracking-wider mb-1">Client</div>
+                        <div className="font-semibold text-zinc-950 dark:text-white">{activeBooking.firstName} {activeBooking.lastName}</div>
+                      </div>
+                      <div>
+                        <div className="text-zinc-500 dark:text-zinc-400 font-mono text-[10px] uppercase tracking-wider mb-1">Email</div>
+                        <div className="text-zinc-950 dark:text-white">{activeBooking.email}</div>
+                      </div>
+                      <div>
+                        <div className="text-zinc-500 dark:text-zinc-400 font-mono text-[10px] uppercase tracking-wider mb-1">Téléphone</div>
+                        <div className="text-zinc-950 dark:text-white">{activeBooking.phone}</div>
+                      </div>
+                      <div>
+                        <div className="text-zinc-500 dark:text-zinc-400 font-mono text-[10px] uppercase tracking-wider mb-1">Mode de Paiement</div>
+                        <div className="font-semibold text-zinc-950 dark:text-white capitalize">{activeBooking.payment_gateway || "Stripe"}</div>
+                      </div>
+                      <div className="col-span-2">
+                        <div className="text-zinc-500 dark:text-zinc-400 font-mono text-[10px] uppercase tracking-wider mb-1">Référence Transaction</div>
+                        <div className="text-[10px] font-mono text-zinc-600 dark:text-zinc-400 break-all bg-white dark:bg-zinc-900 p-2 border border-zinc-200 dark:border-zinc-800">{activeBooking.gateway_reference || activeBooking.stripe_payment_intent_id || "N/A"}</div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-zinc-900 p-6 border border-zinc-200 dark:border-zinc-800 mb-6 text-sm">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-zinc-500 dark:text-zinc-400 font-medium">Montant Total</span>
+                        <span className="font-medium text-lg text-zinc-950 dark:text-white">{activeBooking.price.toLocaleString("fr-TN")} TND</span>
+                      </div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-zinc-500 dark:text-zinc-400 font-medium">Acompte (30%) - Requis/Autorisé</span>
+                        <span className="font-medium text-zinc-950 dark:text-white">{activeBooking.deposit.toLocaleString("fr-TN")} TND</span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm border-t border-zinc-200 dark:border-zinc-800 mt-4 pt-4">
+                        <span className="text-zinc-500 dark:text-zinc-400 font-medium">Statut Actuel</span>
+                        <span className={`px-2 py-1 rounded-full text-[10px] font-mono font-medium uppercase tracking-wider ${statusColors[activeBooking.status]}`}>
+                          {statusLabels[activeBooking.status] || activeBooking.status}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-zinc-200 dark:border-zinc-800 pt-6 mt-6 space-y-4 text-left">
+                      <h4 className="font-display text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                        Actions de Paiement Admin
+                      </h4>
+                      <div className="flex flex-wrap gap-3">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const paid = await verifyAdminPayment(activeBooking.id);
+                              if (paid) {
+                                toast.success("Paiement vérifié avec succès !");
+                                loadData();
+                              } else {
+                                toast.error("Le paiement n'a pas encore été finalisé par le client.");
+                              }
+                            } catch (e: any) {
+                              toast.error(e.message || "Erreur de vérification");
+                            }
+                          }}
+                          className="px-4 py-2 bg-zinc-900 text-white hover:bg-zinc-800 rounded-lg text-xs font-mono uppercase tracking-wider cursor-pointer"
+                        >
+                          <i className="fa-solid fa-rotate mr-1"></i> Vérifier en Direct
+                        </button>
+
+                        {activeBooking.status === "confirmed" && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (confirm("Voulez-vous vraiment rembourser cet acompte ? Cette action annulera également la réservation.")) {
+                                try {
+                                  await refundBooking(activeBooking.id);
+                                  toast.success("Remboursement traité avec succès !");
+                                  loadData();
+                                } catch (e: any) {
+                                  toast.error(e.message || "Le remboursement a échoué");
+                                }
+                              }
+                            }}
+                            className="px-4 py-2 bg-red-600 text-white hover:bg-red-500 rounded-lg text-xs font-mono uppercase tracking-wider cursor-pointer"
+                          >
+                            <i className="fa-solid fa-arrow-rotate-left mr-1"></i> Rembourser
+                          </button>
+                        )}
+
+                        {activeBooking.status === "pending" && (
+                          <div className="flex items-center gap-2 border border-zinc-200 dark:border-zinc-800 p-1.5 bg-zinc-100 dark:bg-zinc-900 rounded-lg">
+                            <span className="text-[10px] font-mono font-medium text-zinc-500 uppercase tracking-wide px-1">Offline :</span>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  await recordManualPayment(activeBooking.id, "cash");
+                                  toast.success("Paiement Espèces enregistré !");
+                                  loadData();
+                                } catch (e: any) {
+                                  toast.error(e.message);
+                                }
+                              }}
+                              className="px-3 py-1 bg-white hover:bg-zinc-50 border border-zinc-200 text-zinc-800 text-[10px] rounded cursor-pointer"
+                            >
+                              Espèces
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  await recordManualPayment(activeBooking.id, "cheque");
+                                  toast.success("Paiement Chèque enregistré !");
+                                  loadData();
+                                } catch (e: any) {
+                                  toast.error(e.message);
+                                }
+                              }}
+                              className="px-3 py-1 bg-white hover:bg-zinc-50 border border-zinc-200 text-zinc-800 text-[10px] rounded cursor-pointer"
+                            >
+                              Chèque
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
-              <div className="bg-white dark:bg-zinc-900 p-6 border border-zinc-200 dark:border-zinc-800 mb-6">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-zinc-500 dark:text-zinc-400 font-medium text-sm">Montant Total</span>
-                  <span className="font-medium text-lg text-zinc-950 dark:text-white">{activeBooking.price.toLocaleString("fr-TN")} TND</span>
+              <div className="p-6 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex gap-4 justify-between">
+                <div>
+                  {!isEditing && (
+                    <button 
+                      type="button"
+                      onClick={() => handleDelete(activeBooking.id)}
+                      className="px-4 py-2 border border-red-200 text-red-500 hover:bg-red-50 rounded-lg text-xs font-semibold"
+                    >
+                      Supprimer
+                    </button>
+                  )}
                 </div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-zinc-500 dark:text-zinc-400 font-medium text-sm">Acompte (30%) - Autorisé</span>
-                  <span className="font-medium text-zinc-950 dark:text-white">{activeBooking.deposit.toLocaleString("fr-TN")} TND</span>
-                </div>
-                <div className="flex justify-between items-center text-sm border-t border-zinc-200 dark:border-zinc-800 mt-4 pt-4">
-                  <span className="text-zinc-500 dark:text-zinc-400 font-medium">Statut Actuel</span>
-                  <span className={`px-2 py-1 rounded-full text-[10px] font-mono font-medium uppercase tracking-wider ${statusColors[activeBooking.status]}`}>
-                    {statusLabels[activeBooking.status] || activeBooking.status}
-                  </span>
+                
+                <div className="flex gap-3">
+                  {isEditing ? (
+                    <>
+                      <button 
+                        type="button"
+                        onClick={() => setIsEditing(false)}
+                        className="btn btn-outline text-xs font-semibold"
+                      >
+                        Annuler
+                      </button>
+                      <button 
+                        type="submit"
+                        className="btn btn-primary text-xs font-semibold"
+                      >
+                        Enregistrer
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button 
+                        type="button"
+                        onClick={() => startEditing(activeBooking)}
+                        className="btn btn-outline text-xs font-semibold"
+                      >
+                        Modifier les infos
+                      </button>
+                      {activeBooking.status === "pending" && (
+                        <button 
+                          type="button"
+                          onClick={() => handleStatusChange(activeBooking.id, "confirmed")}
+                          className="btn btn-primary text-xs font-semibold"
+                        >
+                          Confirmer (Capturer)
+                        </button>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
-            </div>
-
-            <div className="p-6 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex gap-4 justify-end">
-              {activeBooking.status === "pending" && (
-                <>
-                  <button 
-                    onClick={() => handleStatusChange(activeBooking.id, "cancelled")}
-                    className="btn btn-outline text-red-600 border-red-200 hover:border-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                  >
-                    Annuler & Libérer
-                  </button>
-                  <button 
-                    onClick={() => handleStatusChange(activeBooking.id, "confirmed")}
-                    className="btn btn-primary"
-                  >
-                    Confirmer (Capturer Paiement)
-                  </button>
-                </>
-              )}
-            </div>
+            </form>
           </div>
         </div>
       )}

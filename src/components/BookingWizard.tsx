@@ -1,12 +1,10 @@
-// =============================================================
-// ALBATROS : BookingWizard Component
-// =============================================================
 import React, { useState, useEffect, useMemo } from "react";
-import type { EventTypeSlug } from "../types";
-import { fetchAvailability, createBooking, type CreateBookingInput, type CreateBookingResult } from "../lib/api";
-import { motion } from "motion/react";
+import type { EventTypeSlug, BusinessSettings } from "../types";
+import { fetchAvailability, createBooking, type CreateBookingInput, type CreateBookingResult, fetchSettings, fetchConfigStatus } from "../lib/api";
+import { motion, AnimatePresence } from "motion/react";
 import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import toast from "react-hot-toast";
+import { useLanguage } from "../context/LanguageContext";
 
 const eventPrices: Record<EventTypeSlug, number> = {
   "Mariage": 4000,
@@ -16,48 +14,117 @@ const eventPrices: Record<EventTypeSlug, number> = {
   "Autre": 1500,
 };
 
-const eventLabels: Record<EventTypeSlug, string> = {
-  "Mariage": "Mariage",
-  "Soirée": "Soirée",
-  "Entreprise": "Entreprise",
-  "Anniversaire": "Anniversaire",
-  "Autre": "Autre",
+const eventIcons: Record<EventTypeSlug, string> = {
+  "Mariage": "fa-rings-wedding",
+  "Soirée": "fa-champagne-glasses",
+  "Entreprise": "fa-building",
+  "Anniversaire": "fa-cake-candles",
+  "Autre": "fa-star",
 };
 
 export function BookingWizard() {
   const stripe = useStripe();
   const elements = useElements();
-  
+  const { t } = useLanguage();
+
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [availability, setAvailability] = useState<string[]>([]);
   const [loadingAvailability, setLoadingAvailability] = useState(false);
+  const [settings, setSettings] = useState<BusinessSettings | null>(null);
+  const [isDarkMode, setIsDarkMode] = useState(() => document.documentElement.classList.contains("dark"));
 
-  // Dropdown states
-  const [selDay, setSelDay] = useState<string>("");
-  const [selMonth, setSelMonth] = useState<string>("");
-  const [selYear, setSelYear] = useState<string>("");
+  const [config, setConfig] = useState<{ stripe: boolean, flouci: boolean, konnect: boolean } | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'flouci' | 'konnect' | 'd17'>('stripe');
+
+  const [selectedDay, setSelectedDay] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState("");
+  const [selectedYear, setSelectedYear] = useState("");
+  const [isVerified, setIsVerified] = useState(false);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
+
+  function getMaxDays(mStr: string, yStr: string): number {
+    const month = parseInt(mStr, 10);
+    const year = parseInt(yStr, 10);
+    if (isNaN(month)) return 31;
+    const safeMonth = Math.min(12, Math.max(1, month));
+    const safeYear = isNaN(year) ? new Date().getFullYear() : year;
+    return new Date(safeYear, safeMonth, 0).getDate();
+  }
+
+  const handleVerifyDate = async () => {
+    setVerificationError(null);
+    setIsVerified(false);
+    setSelectedDate(null);
+    
+    const day = parseInt(selectedDay.trim(), 10);
+    const month = parseInt(selectedMonth.trim(), 10) - 1; // 0-indexed month
+    const year = parseInt(selectedYear.trim(), 10);
+
+    if (isNaN(day) || isNaN(month) || isNaN(year)) {
+      setVerificationError("Veuillez remplir tous les champs (Jour, Mois, Année) avec des nombres valides.");
+      return;
+    }
+
+    const currentYear = new Date().getFullYear();
+    const maxYear = currentYear + 2;
+    if (year > maxYear) {
+      setVerificationError(`L'année sélectionnée ne peut pas dépasser ${maxYear} (maximum 2 ans dans le futur).`);
+      return;
+    }
+
+    const parsed = new Date(year, month, day);
+    if (parsed.getFullYear() !== year || parsed.getMonth() !== month || parsed.getDate() !== day) {
+      setVerificationError("La date saisie n'existe pas (veuillez vérifier le jour, le mois et l'année).");
+      return;
+    }
+
+    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    
+    // Past date check
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    parsed.setHours(0, 0, 0, 0);
+    if (parsed < today) {
+      setVerificationError("La date choisie est déjà passée.");
+      return;
+    }
+
+    // Lead days check
+    const diffTime = parsed.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays < minLeadDays) {
+      setVerificationError(`Délai trop court. Les réservations en ligne doivent être effectuées au moins ${minLeadDays} jours à l'avance.`);
+      return;
+    }
+
+    setCheckingAvailability(true);
+    try {
+      const blockedDates = await fetchAvailability();
+      setAvailability(blockedDates);
+      
+      if (blockedDates.includes(dateStr)) {
+        setVerificationError("Cette date n'est pas disponible (déjà réservée).");
+      } else {
+        setSelectedDate(dateStr);
+        setIsVerified(true);
+        toast.success("Date disponible !");
+      }
+    } catch (err) {
+      setVerificationError("Impossible de vérifier la disponibilité. Veuillez réessayer.");
+    } finally {
+      setCheckingAvailability(false);
+    }
+  };
 
   useEffect(() => {
-    if (selectedDate) {
-      const parts = selectedDate.split("-");
-      if (parts.length === 3) {
-        setSelYear(parts[0]);
-        setSelMonth(String(parseInt(parts[1])));
-        setSelDay(String(parseInt(parts[2])));
-      }
-    } else {
-      setSelDay("");
-      setSelMonth("");
-      setSelYear("");
-    }
-  }, [selectedDate]);
-
-  const daysInSelectedMonth = useMemo(() => {
-    const y = parseInt(selYear) || 2026;
-    const m = parseInt(selMonth) || 1;
-    return new Date(y, m, 0).getDate();
-  }, [selMonth, selYear]);
+    const observer = new MutationObserver(() => {
+      setIsDarkMode(document.documentElement.classList.contains("dark"));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
 
   const isPastDate = useMemo(() => {
     if (!selectedDate) return false;
@@ -67,15 +134,6 @@ export function BookingWizard() {
     today.setHours(0, 0, 0, 0);
     return date < today;
   }, [selectedDate]);
-
-  const handleDropdownChange = (d: string, m: string, y: string) => {
-    if (d && m && y) {
-      const formattedDate = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-      setSelectedDate(formattedDate);
-    } else {
-      setSelectedDate(null);
-    }
-  };
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -90,11 +148,40 @@ export function BookingWizard() {
   const [loadingSubmit, setLoadingSubmit] = useState(false);
 
   const basePrice = eventPrices[eventType] || 1500;
-  const depositPercent = 30;
+  const depositPercent = settings?.deposit_percent ?? 30;
   const depositAmount = Math.round(basePrice * (depositPercent / 100));
+
+  const minGuests = settings?.min_guests ?? 50;
+  const maxGuests = settings?.max_guests ?? 400;
+  const minLeadDays = settings?.min_lead_days ?? 14;
+
+  const leadDaysTooShort = useMemo(() => {
+    if (!selectedDate) return false;
+    const parts = selectedDate.split("-");
+    const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffTime = date.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays < minLeadDays;
+  }, [selectedDate, minLeadDays]);
 
   useEffect(() => {
     setLoadingAvailability(true);
+    fetchSettings()
+      .then((data) => setSettings(data))
+      .catch((err) => console.error("Error fetching settings:", err));
+
+    fetchConfigStatus()
+      .then((data) => {
+        setConfig(data);
+        if (!data.stripe) {
+          if (data.flouci) setPaymentMethod('flouci');
+          else if (data.konnect) setPaymentMethod('konnect');
+        }
+      })
+      .catch((err) => console.error("Error fetching config status:", err));
+
     fetchAvailability()
       .then((blockedDates) => {
         setAvailability(blockedDates);
@@ -107,10 +194,9 @@ export function BookingWizard() {
       });
   }, []);
 
-  const monthsList = [
-    "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
-    "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
-  ];
+  const monthsList = useMemo(() => {
+    return Array.from({ length: 12 }, (_, idx) => t(`month.${idx}`));
+  }, [t]);
 
   const formatNiceDate = (d: Date) => {
     return `${d.getDate()} ${monthsList[d.getMonth()]} ${d.getFullYear()}`;
@@ -131,42 +217,70 @@ export function BookingWizard() {
 
   const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stripe || !elements || !selectedDate) return;
+    if (!selectedDate) return;
 
     setLoadingSubmit(true);
 
     try {
-      const cardElement = elements.getElement(CardElement);
-      if (!cardElement) throw new Error("Card element not found");
+      if (paymentMethod === 'stripe') {
+        if (!stripe || !elements) {
+          throw new Error("Paiement par carte indisponible (Stripe non initialisé).");
+        }
+        const cardElement = elements.getElement(CardElement);
+        if (!cardElement) throw new Error("Card element not found");
 
-      const intentResult = await import("../lib/api").then(m => m.createPaymentIntent(eventType));
-      
-      if (intentResult.mock) {
-        const result = await createBooking({
-          firstName, lastName, phone, email, date: selectedDate, eventType, guests, notes, paymentIntentId: "mock_pi_" + Date.now(), bot_field: botField
+        const intentResult = await import("../lib/api").then(m => m.createPaymentIntent(eventType));
+
+        if (intentResult.mock) {
+          const result = await createBooking({
+            firstName, lastName, phone, email, date: selectedDate, eventType, guests, notes, paymentIntentId: "mock_pi_" + Date.now(), bot_field: botField, paymentMethod: 'stripe'
+          });
+          setBookingResult(result);
+          setStep(4);
+          return;
+        }
+
+        const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(intentResult.clientSecret, {
+          payment_method: {
+            card: cardElement as any,
+            billing_details: { name: `${firstName} ${lastName}`, email, phone },
+          },
         });
-        setBookingResult(result);
-        setStep(4);
-        return;
-      }
 
-      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(intentResult.clientSecret, {
-        payment_method: {
-          card: cardElement as any,
-          billing_details: { name: `${firstName} ${lastName}`, email, phone },
-        },
-      });
+        if (stripeError) throw new Error(stripeError.message);
 
-      if (stripeError) throw new Error(stripeError.message);
-
-      if (paymentIntent && paymentIntent.status === "requires_capture") {
-        const result = await createBooking({
-          firstName, lastName, phone, email, date: selectedDate, eventType, guests, notes, paymentIntentId: paymentIntent.id, bot_field: botField
-        });
-        setBookingResult(result);
-        setStep(4);
+        if (paymentIntent && paymentIntent.status === "requires_capture") {
+          const result = await createBooking({
+            firstName, lastName, phone, email, date: selectedDate, eventType, guests, notes, paymentIntentId: paymentIntent.id, bot_field: botField, paymentMethod: 'stripe'
+          });
+          setBookingResult(result);
+          setStep(4);
+        } else {
+          throw new Error("Le paiement n'a pas pu être autorisé. Veuillez réessayer.");
+        }
       } else {
-        throw new Error("Le paiement n'a pas pu être autorisé. Veuillez réessayer.");
+        // Flouci, Konnect or D17 redirect flow
+        const result = await createBooking({
+          firstName,
+          lastName,
+          phone,
+          email,
+          date: selectedDate,
+          eventType,
+          guests,
+          notes,
+          bot_field: botField,
+          paymentMethod
+        });
+        
+        if (result.success && result.paymentUrl) {
+          toast.success("Redirection vers la passerelle sécurisée...");
+          setTimeout(() => {
+            window.location.href = result.paymentUrl!;
+          }, 1000);
+        } else {
+          throw new Error("Impossible de générer le lien de paiement.");
+        }
       }
 
     } catch (err: any) {
@@ -178,165 +292,261 @@ export function BookingWizard() {
 
   return (
     <section className="bg-zinc-50 dark:bg-zinc-950 py-32 relative overflow-hidden" id="reservation">
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#C6A969]/30 to-transparent" />
+
       <div className="max-w-4xl mx-auto px-6 relative z-10">
-        
-        {/* Header */}
-        <motion.div 
+
+        <motion.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
-          className="text-center mb-16 space-y-4"
+          className="text-center mb-16 space-y-4 animate-fade-in"
         >
+          <span className="section-label">Réservation</span>
           <h2 className="text-3xl md:text-5xl font-display font-medium text-zinc-950 dark:text-white tracking-tight">
-            Réserver votre instant
+            {t("booking.title")}
           </h2>
           <p className="text-zinc-600 dark:text-zinc-400 font-sans text-base max-w-lg mx-auto">
-            Choisissez votre date et sécurisez votre événement en quelques minutes.
+            {t("booking.subtitle")}
           </p>
         </motion.div>
 
-        {/* Steps indicator */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, delay: 0.1 }}
           className="flex justify-center items-center relative mb-16"
         >
-          <div className="absolute top-5 left-1/2 -translate-x-1/2 w-1/2 h-[1px] bg-zinc-200 dark:bg-zinc-800 z-0" />
+          <div className="absolute top-5 left-1/2 -translate-x-1/2 w-1/2 h-[2px] bg-zinc-200 dark:bg-zinc-800 z-0">
+            <div
+              className="h-full bg-[#C6A969] transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
+              style={{ width: step === 1 ? "0%" : step === 2 ? "50%" : "100%" }}
+            />
+          </div>
           <div className="flex gap-16 md:gap-24">
             {[1, 2, 3].map((num) => {
-              const label = num === 1 ? "Date" : num === 2 ? "Détails" : "Paiement";
+              const label = num === 1 ? t("booking.step_date") : num === 2 ? t("booking.step_details") : t("booking.step_payment");
               const isActive = step === num;
               const isCompleted = step > num;
               return (
                 <div key={num} className="flex flex-col items-center gap-3 relative z-10 bg-zinc-50 dark:bg-zinc-950 px-2">
-                  <div className={`w-10 h-10 flex items-center justify-center font-sans font-medium text-sm transition-colors duration-300 border rounded-full ${isActive ? "bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 border-zinc-950 dark:border-white" : isCompleted ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-950 dark:text-white border-zinc-300 dark:border-zinc-700" : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400"}`}>
+                  <div className={`w-10 h-10 flex items-center justify-center font-sans font-medium text-sm transition-all duration-500 border rounded-full ${
+                    isActive
+                      ? "bg-[#C6A969] text-white border-[#C6A969] shadow-[0_4px_15px_rgba(198,169,105,0.3)]"
+                      : isCompleted
+                        ? "bg-zinc-100 dark:bg-zinc-800 text-[#C6A969] border-[#C6A969]/30"
+                        : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400"
+                  }`}>
                     {isCompleted ? <i className="fa-solid fa-check"></i> : num}
                   </div>
-                  <span className={`font-sans text-xs ${isActive ? "font-medium text-zinc-950 dark:text-white" : "text-zinc-500"}`}>{label}</span>
+                  <span className={`font-sans text-xs transition-colors duration-300 ${isActive ? "font-medium text-[#C6A969]" : "text-zinc-500"}`}>{label}</span>
                 </div>
               );
             })}
           </div>
         </motion.div>
 
-        {/* Wizard Container */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="bg-white dark:bg-zinc-900 shadow-[0_8px_40px_rgb(0,0,0,0.06)] dark:shadow-[0_8px_40px_rgb(0,0,0,0.2)] p-8 md:p-12 relative"
+          className="bg-white dark:bg-zinc-900 border border-zinc-200/60 dark:border-zinc-800/60 shadow-[0_8px_60px_rgb(0,0,0,0.06)] dark:shadow-[0_8px_60px_rgb(0,0,0,0.2)] p-8 md:p-12 relative"
         >
-          {/* STEP 1 */}
+          <AnimatePresence mode="wait">
+
           {step === 1 && (
-            <div className="space-y-8 animate-fade-in text-left">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="flex flex-col text-left">
-                  <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-2">Jour</label>
-                  <select value={selDay} onChange={(e) => { const val = e.target.value; setSelDay(val); handleDropdownChange(val, selMonth, selYear); }} className="input-lux cursor-pointer">
-                    <option value="">--</option>
-                    {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((d) => (
-                      <option key={d} value={String(d)}>{String(d).padStart(2, "0")}</option>
-                    ))}
-                  </select>
+            <motion.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.4 }} className="space-y-8 text-left">
+              <div className="flex flex-col text-left">
+                <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-4">{t("booking.step_date")}</label>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                  {/* Day input */}
+                  <div className="flex flex-col text-left">
+                    <label className="text-xs font-mono uppercase tracking-wider text-zinc-400 mb-2">Jour</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      placeholder="Ex: 28"
+                      value={selectedDay}
+                      onChange={(e) => {
+                        let val = e.target.value;
+                        if (val !== "") {
+                          let num = parseInt(val, 10);
+                          const maxD = getMaxDays(selectedMonth, selectedYear);
+                          if (num > maxD) val = String(maxD);
+                          if (num < 1) val = "";
+                        }
+                        setSelectedDay(val);
+                        setIsVerified(false);
+                        setSelectedDate(null);
+                        setVerificationError(null);
+                      }}
+                      className="input-lux w-full"
+                    />
+                  </div>
+
+                  {/* Month input */}
+                  <div className="flex flex-col text-left">
+                    <label className="text-xs font-mono uppercase tracking-wider text-zinc-400 mb-2">Mois</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="12"
+                      placeholder="Ex: 08"
+                      value={selectedMonth}
+                      onChange={(e) => {
+                        let val = e.target.value;
+                        if (val !== "") {
+                          let num = parseInt(val, 10);
+                          if (num > 12) val = "12";
+                          if (num < 1) val = "";
+                        }
+                        setSelectedMonth(val);
+                        setIsVerified(false);
+                        setSelectedDate(null);
+                        setVerificationError(null);
+
+                        if (selectedDay) {
+                          const maxD = getMaxDays(val, selectedYear);
+                          if (parseInt(selectedDay, 10) > maxD) {
+                            setSelectedDay(String(maxD));
+                          }
+                        }
+                      }}
+                      className="input-lux w-full"
+                    />
+                  </div>
+
+                  {/* Year input */}
+                  <div className="flex flex-col text-left">
+                    <label className="text-xs font-mono uppercase tracking-wider text-zinc-400 mb-2">Année</label>
+                    <input
+                      type="number"
+                      min={new Date().getFullYear()}
+                      max={new Date().getFullYear() + 2}
+                      placeholder={`Ex: ${new Date().getFullYear()}`}
+                      value={selectedYear}
+                      onChange={(e) => {
+                        const currentY = new Date().getFullYear();
+                        const maxValY = currentY + 2;
+                        let val = e.target.value;
+                        if (val !== "") {
+                          let num = parseInt(val, 10);
+                          if (num > maxValY) val = String(maxValY);
+                        }
+                        setSelectedYear(val);
+                        setIsVerified(false);
+                        setSelectedDate(null);
+                        setVerificationError(null);
+
+                        if (selectedDay && selectedMonth) {
+                          const maxD = getMaxDays(selectedMonth, val);
+                          if (parseInt(selectedDay, 10) > maxD) {
+                            setSelectedDay(String(maxD));
+                          }
+                        }
+                      }}
+                      className="input-lux w-full"
+                    />
+                  </div>
                 </div>
-                <div className="flex flex-col text-left">
-                  <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-2">Mois</label>
-                  <select value={selMonth} onChange={(e) => { const val = e.target.value; setSelMonth(val); handleDropdownChange(selDay, val, selYear); }} className="input-lux cursor-pointer">
-                    <option value="">--</option>
-                    {monthsList.map((m, idx) => (
-                      <option key={m} value={String(idx + 1)}>{m}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex flex-col text-left">
-                  <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-2">Année</label>
-                  <select value={selYear} onChange={(e) => { const val = e.target.value; setSelYear(val); handleDropdownChange(selDay, selMonth, val); }} className="input-lux cursor-pointer">
-                    <option value="">--</option>
-                    {[2026, 2027, 2028].map((y) => (
-                      <option key={y} value={String(y)}>{y}</option>
-                    ))}
-                  </select>
-                </div>
+
+                <button
+                  type="button"
+                  onClick={handleVerifyDate}
+                  disabled={checkingAvailability || !selectedDay || !selectedMonth || !selectedYear}
+                  className="btn btn-gold flex items-center gap-2 justify-center cursor-pointer w-full shine-effect text-sm font-sans font-medium h-[46px]"
+                >
+                  {checkingAvailability ? (
+                    <i className="fa-solid fa-circle-notch fa-spin"></i>
+                  ) : (
+                    <i className="fa-solid fa-magnifying-glass text-xs"></i>
+                  )}
+                  Vérifier la disponibilité
+                </button>
               </div>
 
-              {selectedDate ? (
-                isPastDate ? (
-                  <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-700 dark:text-red-400 text-sm font-sans flex items-start gap-3">
-                    <i className="fa-solid fa-circle-xmark mt-1"></i>
-                    <div>
-                      <span className="font-medium block mb-1">Date Invalide</span>
-                      Vous ne pouvez pas sélectionner une date dans le passé.
-                    </div>
+              {verificationError && (
+                <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-700 dark:text-red-400 text-sm font-sans flex items-start gap-3 animate-fade-in">
+                  <i className="fa-solid fa-circle-xmark mt-1"></i>
+                  <div>
+                    <span className="font-medium block mb-1">Date non disponible</span>
+                    {verificationError}
                   </div>
-                ) : availability.includes(selectedDate) ? (
-                  <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-700 dark:text-red-400 text-sm font-sans flex items-start gap-3">
-                    <i className="fa-solid fa-circle-xmark mt-1"></i>
-                    <div>
-                      <span className="font-medium block mb-1">Date Indisponible</span>
-                      Cette date est déjà réservée ou bloquée.
-                    </div>
+                </div>
+              )}
+
+              {isVerified && selectedDate && (
+                <div className="p-4 bg-[#C6A969]/5 border border-[#C6A969]/20 text-[#A88B4A] dark:text-[#D4B978] text-sm font-sans flex items-start gap-3 animate-fade-in">
+                  <i className="fa-solid fa-circle-check mt-1"></i>
+                  <div>
+                    <span className="font-medium block mb-1">Date disponible !</span>
+                    {t("booking.available_date_success", { date: formatNiceDate(new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1, parseInt(selectedDay))) })}
                   </div>
-                ) : (
-                  <div className="p-4 bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-300 text-sm font-sans flex items-start gap-3">
-                    <i className="fa-solid fa-circle-check mt-1"></i>
-                    <div>
-                      <span className="font-medium block mb-1">Date Disponible</span>
-                      La date du {formatNiceDate(parseISO(selectedDate))} est libre.
-                    </div>
-                  </div>
-                )
-              ) : (
+                </div>
+              )}
+
+              {!isVerified && !verificationError && (
                 <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-sm font-sans flex items-center gap-3">
-                  <i className="fa-solid fa-calendar"></i>
-                  Sélectionnez une date pour vérifier la disponibilité.
+                  <i className="fa-solid fa-circle-info text-[#C6A969]"></i>
+                  Veuillez remplir les 3 champs ci-dessus et cliquer sur "Vérifier la disponibilité" pour continuer.
                 </div>
               )}
 
               <div className="flex justify-end pt-8">
-                <button type="button" onClick={() => setStep(2)} disabled={!selectedDate || isPastDate || availability.includes(selectedDate)} className="btn btn-primary">
-                  Continuer
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  disabled={!isVerified || !selectedDate}
+                  className="btn btn-gold cursor-pointer"
+                >
+                  {t("booking.btn_continue")}
+                  <i className="fa-solid fa-arrow-right ml-2 text-xs"></i>
                 </button>
               </div>
-            </div>
+            </motion.div>
           )}
 
-          {/* STEP 2 */}
           {step === 2 && (
-            <div className="space-y-8 animate-fade-in">
+            <motion.div key="step2" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.4 }} className="space-y-8">
               <form onSubmit={handleFormSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="flex flex-col text-left">
-                    <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-2">Prénom *</label>
-                    <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} className="input-lux" placeholder="Ex: Youssef" />
+                    <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-2">{t("booking.first_name")}</label>
+                    <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} className="input-lux" placeholder={t("booking.first_name_placeholder")} />
                   </div>
                   <div className="flex flex-col text-left">
-                    <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-2">Nom *</label>
-                    <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} className="input-lux" placeholder="Ex: Trabelsi" />
+                    <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-2">{t("booking.last_name")}</label>
+                    <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} className="input-lux" placeholder={t("booking.last_name_placeholder")} />
                   </div>
                   <div className="hidden" aria-hidden="true" style={{ display: 'none' }}>
                     <input type="text" id="bot_field" name="bot_field" value={botField} onChange={(e) => setBotField(e.target.value)} tabIndex={-1} autoComplete="off" />
                   </div>
                   <div className="flex flex-col text-left">
-                    <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-2">Téléphone *</label>
-                    <input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} className="input-lux" placeholder="+216 -- --- ---" />
+                    <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-2">{t("booking.phone")}</label>
+                    <input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} className="input-lux" placeholder={t("booking.phone_placeholder")} />
                   </div>
                   <div className="flex flex-col text-left">
-                    <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-2">Email *</label>
-                    <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="input-lux" placeholder="Ex: client@gmail.com" />
+                    <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-2">{t("booking.email")}</label>
+                    <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="input-lux" placeholder={t("booking.email_placeholder")} />
                   </div>
 
                   <div className="md:col-span-2 flex flex-col text-left mt-4">
-                    <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-3">Type d'événement *</label>
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                    <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-3">{t("booking.event_type")}</label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                       {(Object.keys(eventPrices) as EventTypeSlug[]).map((slug) => {
                         const isSelected = eventType === slug;
                         return (
-                          <button key={slug} type="button" onClick={() => setEventType(slug)} className={`p-4 border text-center transition-all duration-300 ${isSelected ? "border-zinc-900 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900" : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:border-zinc-400 text-zinc-600 dark:text-zinc-400"}`}>
-                            <span className="font-sans text-xs font-medium block">{eventLabels[slug]}</span>
+                          <button key={slug} type="button" onClick={() => setEventType(slug)} className={`p-4 border text-center transition-all duration-300 cursor-pointer group ${
+                            isSelected
+                              ? "border-[#C6A969] bg-[#C6A969] text-white shadow-[0_4px_15px_rgba(198,169,105,0.25)]"
+                              : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:border-[#C6A969]/40 text-zinc-600 dark:text-zinc-400"
+                          }`}>
+                            <span className="font-sans text-xs font-medium block">{t(`event.${slug}`)}</span>
                             <span className="text-xs opacity-75 mt-1 block">{eventPrices[slug]} TND</span>
                           </button>
                         );
@@ -345,91 +555,208 @@ export function BookingWizard() {
                   </div>
 
                   <div className="flex flex-col text-left md:col-span-2">
-                    <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-2">Nombre d'invités *</label>
-                    <input type="number" required min={50} max={400} value={guests} onChange={(e) => setGuests(parseInt(e.target.value) || 0)} className="input-lux" />
+                    <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-2">{t("booking.guests")}</label>
+                    <input type="number" required min={minGuests} max={maxGuests} value={guests} onChange={(e) => setGuests(parseInt(e.target.value) || 0)} className="input-lux" />
+                    <span className="text-xs text-zinc-400 mt-1">{t("booking.capacity_limit") || `Capacité autorisée : de ${minGuests} à ${maxGuests} personnes.`}</span>
                   </div>
 
                   <div className="flex flex-col text-left md:col-span-2">
-                    <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-2">Notes ou demandes</label>
-                    <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="input-lux" placeholder="Détails de décoration, traiteur, planification spécifique..." />
+                    <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-2">{t("booking.notes")}</label>
+                    <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="input-lux" placeholder={t("booking.notes_placeholder")} />
                   </div>
                 </div>
 
-                  <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-left space-y-2">
-                    <div className="flex justify-between items-center text-sm text-zinc-600 dark:text-zinc-400">
-                      <span>Tarif Estimé de la Salle</span>
-                      <span>{basePrice.toLocaleString("fr-TN")} TND</span>
-                    </div>
-                    <div className="flex justify-between items-center pt-2 text-base font-medium text-zinc-950 dark:text-white">
-                      <span>Acompte requis (30%)</span>
-                      <span>{depositAmount.toLocaleString("fr-TN")} TND</span>
-                    </div>
+                <div className="p-5 bg-[#C6A969]/5 border border-[#C6A969]/15 text-left space-y-2">
+                  <div className="flex justify-between items-center text-sm text-zinc-600 dark:text-zinc-400">
+                    <span>{t("booking.total_price")}</span>
+                    <span>{basePrice.toLocaleString("fr-TN")} TND</span>
                   </div>
+                  <div className="flex justify-between items-center pt-3 border-t border-[#C6A969]/10 text-base font-medium text-zinc-950 dark:text-white">
+                    <span>{t("booking.deposit_price")}</span>
+                    <span className="text-[#C6A969] font-display text-lg">{depositAmount.toLocaleString("fr-TN")} TND</span>
+                  </div>
+                </div>
 
                 <div className="flex justify-between pt-6">
-                  <button type="button" onClick={() => setStep(1)} className="btn btn-outline">Retour</button>
-                  <button type="submit" className="btn btn-primary" disabled={loadingSubmit}>Paiement</button>
+                  <button type="button" onClick={() => setStep(1)} className="btn btn-outline cursor-pointer">
+                    <i className="fa-solid fa-arrow-left mr-2 text-xs"></i>
+                    {t("booking.btn_back")}
+                  </button>
+                  <button type="submit" className="btn btn-gold cursor-pointer" disabled={loadingSubmit}>
+                    {t("booking.btn_payment")}
+                    <i className="fa-solid fa-arrow-right ml-2 text-xs"></i>
+                  </button>
                 </div>
               </form>
-            </div>
+            </motion.div>
           )}
 
-          {/* STEP 3 */}
           {step === 3 && (
-            <div className="space-y-8 animate-fade-in text-left">
-              <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-6 space-y-3">
-                <div className="flex justify-between text-sm text-zinc-600 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800 pb-2">
-                  <span>Date</span>
+            <motion.div key="step3" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.4 }} className="space-y-8 text-left">
+              <div className="bg-[#C6A969]/5 border border-[#C6A969]/15 p-6 space-y-3">
+                <div className="flex justify-between text-sm text-zinc-600 dark:text-zinc-400 border-b border-[#C6A969]/10 pb-2">
+                  <span>{t("booking.step_date")}</span>
                   <span className="font-medium text-zinc-950 dark:text-white">{formatNiceDate(parseISO(selectedDate!))}</span>
                 </div>
-                <div className="flex justify-between text-sm text-zinc-600 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800 pb-2">
-                  <span>Tarif total</span>
+                <div className="flex justify-between text-sm text-zinc-600 dark:text-zinc-400 border-b border-[#C6A969]/10 pb-2">
+                  <span>{t("booking.total_price")}</span>
                   <span className="font-medium text-zinc-950 dark:text-white">{basePrice.toLocaleString("fr-TN")} TND</span>
                 </div>
                 <div className="flex justify-between text-base pt-1 font-medium text-zinc-950 dark:text-white">
-                  <span>Acompte à payer</span>
-                  <span>{depositAmount.toLocaleString("fr-TN")} TND</span>
+                  <span>{t("booking.deposit_price")}</span>
+                  <span className="text-[#C6A969] font-display text-lg">{depositAmount.toLocaleString("fr-TN")} TND</span>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white block">
+                  Choisir votre méthode de paiement :
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {(!config || config.stripe) && (
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('stripe')}
+                      className={`p-4 border text-left transition-all duration-300 rounded-lg flex flex-col gap-3 cursor-pointer ${
+                        paymentMethod === 'stripe'
+                          ? "border-[#C6A969] bg-[#C6A969]/5 shadow-sm"
+                          : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:border-[#C6A969]/30"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-medium text-sm text-zinc-900 dark:text-white">Stripe</span>
+                        <svg viewBox="0 0 120 30" className="h-6" fill={isDarkMode ? "#fff" : "#635bff"}>
+                          <path d="M108.1 6.7c-1.4 0-2.6.4-3.5 1.1V0l-4.1.9v18.8c0 4.2 2 6.8 6.1 6.8 2 0 3.9-.6 5.4-1.5l-.9-3.3c-1 .5-2.1.9-3.4.9-2 0-3-1.3-3-3.3v-6.9c.8-.7 2.1-1.1 3.5-1.1 3.1 0 4.9 1.8 4.9 5.2v2.7l4.1-.1V12c0-4-2.1-5.3-6.1-5.3zM69.3 6.7c-4 0-6.5 2.4-6.5 6.7 0 4.4 2.5 6.8 6.7 6.8 1.6 0 3.3-.4 4.7-1.1l-.5-3.2c-1 .4-2.3.7-3.5.7-1.8 0-3.3-.8-3.5-2.8h10.5v-1.4c.1-3.8-2.1-5.7-7.9-5.7zm3.5 6.2H66c.2-1.7 1.3-2.7 3.1-2.7s2.7 1 2.7 2.7zM47.2 6.7c-3.2 0-5.2 1.5-6.1 3.4l-.3-2.9h-4v17.3l4.1-.9v-5.7c.8 1.4 2.5 2.3 4.6 2.3 3.9 0 6.4-2.4 6.4-6.8.1-4.2-2.3-6.7-4.7-6.7zm-1 9.7c-1.5 0-2.7-.8-3.1-2.2v-2.9c.4-1.4 1.6-2.2 3.1-2.2 1.9 0 3 1.6 3 3.7 0 2-.1 3.6-3 3.6zM86.7 6.7c-3.2 0-5.2 1.5-6.1 3.4l-.3-2.9h-4v17.3l4.1-.9v-5.7c.8 1.4 2.5 2.3 4.6 2.3 3.9 0 6.4-2.4 6.4-6.8 0-4.2-2.3-6.7-4.7-6.7zm-.9 9.7c-1.5 0-2.7-.8-3.1-2.2v-2.9c.4-1.4 1.6-2.2 3.1-2.2 1.9 0 3 1.6 3 3.7 0 2-.1 3.6-3 3.6zM28.2 10.1c0-1.1.9-1.6 2.4-1.6 1.8 0 3.6.5 5.1 1.3l.8-3.4C34.6 5.4 32.4 5 30.1 5c-4.7 0-7.3 2.1-7.3 5.9 0 5.8 8 4.6 8 7 0 1.3-1.1 1.8-2.9 1.8-2.2 0-4.4-.8-6.1-1.8l-.8 3.5c2.1 1.1 4.5 1.7 6.9 1.7 4.9 0 7.5-2.2 7.5-6.2 0-5.9-8-4.8-8-7zM0 11.3v3.9h5.7v11.2h4.3V15.3h5.7v-4H0z"/>
+                        </svg>
+                      </div>
+                      <span className="text-xs text-zinc-500">Cartes internationales (Visa / Mastercard)</span>
+                    </button>
+                  )}
+
+                  {(!config || config.flouci) && (
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('flouci')}
+                      className={`p-4 border text-left transition-all duration-300 rounded-lg flex flex-col gap-3 cursor-pointer ${
+                        paymentMethod === 'flouci'
+                          ? "border-[#C6A969] bg-[#C6A969]/5 shadow-sm"
+                          : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:border-[#C6A969]/30"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-medium text-sm text-zinc-900 dark:text-white">Flouci</span>
+                        <svg viewBox="0 0 100 28" className="h-5" fill={isDarkMode ? "#fff" : "#1a1a2e"}>
+                          <text x="0" y="22" fontSize="20" fontWeight="700" fontFamily="sans-serif">Flouci</text>
+                          <rect x="68" y="4" width="24" height="20" rx="4" stroke={isDarkMode ? "#fff" : "#1a1a2e"} strokeWidth="2" fill="none"/>
+                          <circle cx="80" cy="14" r="4" fill={isDarkMode ? "#fff" : "#1a1a2e"}/>
+                        </svg>
+                      </div>
+                      <span className="text-xs text-zinc-500">Portefeuille mobile et cartes bancaires locales</span>
+                    </button>
+                  )}
+
+                  {(!config || config.konnect) && (
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('konnect')}
+                      className={`p-4 border text-left transition-all duration-300 rounded-lg flex flex-col gap-3 cursor-pointer ${
+                        paymentMethod === 'konnect'
+                          ? "border-[#C6A969] bg-[#C6A969]/5 shadow-sm"
+                          : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:border-[#C6A969]/30"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-medium text-sm text-zinc-900 dark:text-white">Konnect</span>
+                        <svg viewBox="0 0 100 28" className="h-5" fill={isDarkMode ? "#fff" : "#e60000"}>
+                          <text x="0" y="22" fontSize="20" fontWeight="700" fontFamily="sans-serif">Konnect</text>
+                          <circle cx="80" cy="14" r="9" fill="none" stroke={isDarkMode ? "#fff" : "#e60000"} strokeWidth="2"/>
+                          <circle cx="80" cy="14" r="3" fill={isDarkMode ? "#fff" : "#e60000"}/>
+                        </svg>
+                      </div>
+                      <span className="text-xs text-zinc-500">e-DINAR, Sobflous et portefeuilles tunisiens</span>
+                    </button>
+                  )}
+
+                  {(!config || config.konnect) && (
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('d17')}
+                      className={`p-4 border text-left transition-all duration-300 rounded-lg flex flex-col gap-3 cursor-pointer ${
+                        paymentMethod === 'd17'
+                          ? "border-[#C6A969] bg-[#C6A969]/5 shadow-sm"
+                          : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:border-[#C6A969]/30"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-medium text-sm text-zinc-900 dark:text-white">D17</span>
+                        <svg viewBox="0 0 100 28" className="h-5" fill={isDarkMode ? "#fff" : "#003366"}>
+                          <text x="0" y="22" fontSize="20" fontWeight="700" fontFamily="sans-serif">D17</text>
+                          <rect x="62" y="6" width="30" height="16" rx="3" fill="none" stroke={isDarkMode ? "#fff" : "#003366"} strokeWidth="2"/>
+                          <line x1="77" y1="6" x2="77" y2="22" stroke={isDarkMode ? "#fff" : "#003366"} strokeWidth="2"/>
+                        </svg>
+                      </div>
+                      <span className="text-xs text-zinc-500">Paiement mobile via l'application Poste D17</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
               <form onSubmit={handlePaymentSubmit} className="space-y-6">
-                <div className="flex flex-col text-left">
-                  <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-2">Informations de paiement *</label>
-                  <div className="px-4 py-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 transition-colors">
-                    <CardElement options={{ style: { base: { fontSize: '15px', color: '#18181b', '::placeholder': { color: '#a1a1aa' } }, invalid: { color: '#ef4444' } } }} />
+                {paymentMethod === 'stripe' ? (
+                  <div className="flex flex-col text-left">
+                    <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-2">{t("booking.card_info")}</label>
+                    <div className="px-4 py-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus-within:border-[#C6A969] focus-within:ring-1 focus-within:ring-[#C6A969]/30 transition-all">
+                      <CardElement options={{ style: { base: { fontSize: '15px', color: isDarkMode ? '#ffffff' : '#18181b', '::placeholder': { color: '#a1a1aa' } }, invalid: { color: '#ef4444' } } }} />
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-sm font-sans flex items-center gap-3">
+                    <i className="fa-solid fa-circle-info text-[#C6A969] text-base"></i>
+                    <span>Vous allez être redirigé vers la passerelle sécurisée du fournisseur pour finaliser le paiement de l'acompte.</span>
+                  </div>
+                )}
+
                 <div className="flex justify-between pt-6">
-                  <button type="button" onClick={() => setStep(2)} className="btn btn-outline" disabled={loadingSubmit}>Retour</button>
-                  <button type="submit" className="btn btn-primary" disabled={loadingSubmit}>
-                    {loadingSubmit ? "Traitement..." : `Payer ${depositAmount} TND`}
+                  <button type="button" onClick={() => setStep(2)} className="btn btn-outline cursor-pointer" disabled={loadingSubmit}>
+                    <i className="fa-solid fa-arrow-left mr-2 text-xs"></i>
+                    {t("booking.btn_back")}
+                  </button>
+                  <button type="submit" className="btn btn-gold cursor-pointer flex items-center gap-2 justify-center min-w-[150px] shine-effect" disabled={loadingSubmit}>
+                    {loadingSubmit && <i className="fa-solid fa-spinner fa-spin"></i>}
+                    {loadingSubmit ? t("booking.processing") : t("booking.btn_pay", { amount: depositAmount })}
                   </button>
                 </div>
               </form>
-            </div>
+            </motion.div>
           )}
 
-          {/* STEP 4: SUCCESS */}
           {step === 4 && bookingResult && (
-            <div className="space-y-8 py-6 text-center animate-fade-in">
-              <div className="w-16 h-16 mx-auto bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-full flex items-center justify-center text-2xl">
+            <motion.div key="step4" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6 }} className="space-y-8 py-6 text-center">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                className="w-20 h-20 mx-auto bg-gradient-to-br from-[#C6A969] to-[#A88B4A] text-white rounded-full flex items-center justify-center text-3xl shadow-[0_8px_30px_rgba(198,169,105,0.3)]"
+              >
                 <i className="fa-solid fa-check"></i>
-              </div>
+              </motion.div>
 
               <div className="space-y-3">
                 <h3 className="text-2xl font-display font-medium text-zinc-950 dark:text-white">
-                  Réservation confirmée
+                  {t("booking.success_title")}
                 </h3>
                 <p className="text-zinc-600 dark:text-zinc-400 font-sans text-sm max-w-sm mx-auto">
-                  Votre acompte a bien été reçu. Nous vous contacterons sous 24h pour finaliser les détails.
+                  {t("booking.success_text")}
                 </p>
               </div>
 
-              <div className="inline-block bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 px-6 py-3 text-sm font-mono text-zinc-950 dark:text-white font-medium">
-                Réf: {bookingResult.ref}
+              <div className="inline-block bg-[#C6A969]/5 border border-[#C6A969]/20 px-6 py-3 text-sm font-mono text-zinc-950 dark:text-white font-medium">
+                {t("booking.success_ref", { ref: bookingResult.ref })}
               </div>
-            </div>
+            </motion.div>
           )}
+
+          </AnimatePresence>
         </motion.div>
       </div>
     </section>
@@ -440,4 +767,3 @@ function parseISO(dateString: string): Date {
   const parts = dateString.split("-");
   return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
 }
-

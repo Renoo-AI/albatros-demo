@@ -28,6 +28,10 @@ export interface Booking {
   deposit: number;
   balance: number;
   stripe_payment_intent_id?: string;
+  payment_gateway?: string;
+  gateway_reference?: string;
+  gateway_status?: string;
+  flouci_payment_url?: string;
   createdAt: string;
 }
 

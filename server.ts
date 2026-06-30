@@ -339,9 +339,10 @@ async function verifyGatewayPayment(refId: string): Promise<boolean> {
   return booking.status === 'confirmed';
 }
 
+export const app = express();
+
 async function startServer() {
-  const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT || 3000;
 
   // Trust proxy to ensure rate limiter works correctly behind load balancers/Cloud Run ingress
   app.set("trust proxy", 1);
@@ -1330,9 +1331,11 @@ async function startServer() {
     }
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+  if (!process.env.VERCEL) {
+    app.listen(PORT as number, "0.0.0.0", () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  }
 }
 
 startServer();

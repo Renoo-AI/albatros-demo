@@ -12,15 +12,19 @@ import jwt from "jsonwebtoken";
 import xss from "xss";
 import crypto from "crypto";
 
-// JWT Secret - Fallback to a cryptographically secure random string at startup to prevent forgery
-const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString("hex");
-if (!process.env.JWT_SECRET) {
-  console.warn("WARNING: JWT_SECRET environment variable is not set. A random secret has been generated. Admin sessions will invalidate on server restart.");
-}
-
-
 // Load environment variables
 dotenv.config();
+
+// JWT Secret
+let JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("FATAL: JWT_SECRET environment variable must be set in production!");
+  } else {
+    JWT_SECRET = crypto.randomBytes(32).toString("hex");
+    console.warn("WARNING: JWT_SECRET environment variable is not set. A random secret has been generated.");
+  }
+}
 
 // Create local data directories if they don't exist (use /tmp on Vercel)
 const DATA_DIR = path.join(process.env.VERCEL ? "/tmp" : process.cwd(), "data");
@@ -91,25 +95,41 @@ class Mutex {
 }
 const fileMutex = new Mutex();
 
-// Helper to read local bookings asynchronously
+function getEncryptionKey() {
+  const keyStr = process.env.ENCRYPTION_KEY || JWT_SECRET || 'default-fallback-key-for-local';
+  return crypto.createHash('sha256').update(keyStr).digest();
+}
+
+// Helper to read local bookings asynchronously (with encryption support)
 async function readLocalBookings(): Promise<any[]> {
   if (!fs.existsSync(BOOKINGS_FILE)) {
-    try {
-      await fs.promises.writeFile(BOOKINGS_FILE, JSON.stringify([], null, 2));
-    } catch {}
     return [];
   }
   try {
     const data = await fs.promises.readFile(BOOKINGS_FILE, "utf-8");
-    return JSON.parse(data);
+    if (!data.trim()) return [];
+    try {
+      // Attempt to parse as plain JSON first (for backwards compatibility)
+      return JSON.parse(data);
+    } catch {
+      // If parsing fails, it's likely encrypted
+      const decipher = crypto.createDecipheriv('aes-256-cbc', getEncryptionKey(), Buffer.alloc(16, 0));
+      let decrypted = decipher.update(data, 'hex', 'utf-8');
+      decrypted += decipher.final('utf-8');
+      return JSON.parse(decrypted);
+    }
   } catch (e) {
+    console.error("Failed to read or decrypt local bookings:", e);
     return [];
   }
 }
 
-// Helper to write local bookings asynchronously
+// Helper to write local bookings asynchronously (encrypted)
 async function writeLocalBookings(bookings: any[]): Promise<void> {
-  await fs.promises.writeFile(BOOKINGS_FILE, JSON.stringify(bookings, null, 2));
+  const cipher = crypto.createCipheriv('aes-256-cbc', getEncryptionKey(), Buffer.alloc(16, 0));
+  let encrypted = cipher.update(JSON.stringify(bookings), 'utf-8', 'hex');
+  encrypted += cipher.final('hex');
+  await fs.promises.writeFile(BOOKINGS_FILE, encrypted);
 }
 
 // Helper to read local blocked dates asynchronously
@@ -435,6 +455,13 @@ async function startServer() {
     message: { error: "Trop de tentatives de réservation, veuillez réessayer plus tard." }
   });
 
+  const publicLimiter = rateLimit({
+    windowMs: 5 * 60 * 1000,
+    max: 30, // 30 requests per 5 minutes
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
   // Use raw body for Stripe webhook endpoint specifically, with body size limit to prevent DoS
   app.post("/api/stripe-webhook", express.raw({ type: "application/json", limit: "1mb" }), async (req, res) => {
     const sig = req.headers["stripe-signature"];
@@ -494,7 +521,7 @@ async function startServer() {
   app.use(express.urlencoded({ extended: true, limit: "50kb" }));
 
   // Endpoint: Check integration statuses
-  app.get("/api/config-status", (req, res) => {
+  app.get("/api/config-status", publicLimiter, (req, res) => {
     const { apiKey: kKey, walletId: kWallet } = getKonnect();
     res.json({
       supabase: !!(process.env.SUPABASE_URL && (process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY)),
@@ -519,7 +546,7 @@ async function startServer() {
   });
 
   // Endpoint: Get booked & blocked dates (Privacy-preserving, queries public view to protect GDPR data)
-  app.get("/api/availability", async (req, res) => {
+  app.get("/api/availability", publicLimiter, async (req, res) => {
     const supabase = getSupabase();
     let bookedDates: string[] = [];
     let blockedDates: string[] = [];
@@ -897,27 +924,20 @@ async function startServer() {
       // Use Supabase admins table
       const { data, error } = await supabase.from("admins").select("*").eq("username", username).single();
       
-      console.log("Login attempt:", { username, error, data });
+      console.log(`Login attempt for username: ${username}`);
 
       if (error || !data) {
-        if (username === 'admin' && password === 'albatros2026') {
-          const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: '1d' });
-          return res.json({ token });
-        }
         return res.status(401).json({ error: "Identifiants invalides." });
       }
 
       // Removed single admin UUID restriction (f2049c27-59e6-4746-9e91-5b0cad555519 lockout) to support multi-admin setups
       const isValid = await bcrypt.compare(password, data.password_hash);
       if (!isValid) {
-        if (username === 'admin' && password === 'albatros2026') {
-          const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: '1d' });
-          return res.json({ token });
-        }
         return res.status(401).json({ error: "Identifiants invalides." });
       }
 
-      const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: '1d' });
+      const role = data?.role || (username === 'admin' ? 'superadmin' : 'admin');
+      const token = jwt.sign({ username, role }, JWT_SECRET as string, { expiresIn: '1d' });
       await supabase.from("admins").update({ last_login: new Date().toISOString() }).eq("id", data.id);
       return res.json({ token });
     } else {
@@ -926,11 +946,8 @@ async function startServer() {
       const LOCAL_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
       
       if (LOCAL_ADMIN_USER && LOCAL_ADMIN_PASSWORD && username === LOCAL_ADMIN_USER && password === LOCAL_ADMIN_PASSWORD) {
-        const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: '1d' });
-        return res.json({ token });
-      }
-      if (username === 'admin' && password === 'albatros2026') {
-        const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: '1d' });
+        const role = username === 'admin' ? 'superadmin' : 'admin';
+        const token = jwt.sign({ username, role }, JWT_SECRET as string, { expiresIn: '1d' });
         return res.json({ token });
       }
       return res.status(401).json({ error: "Identifiants invalides." });
@@ -945,7 +962,8 @@ async function startServer() {
     }
 
     try {
-      jwt.verify(token, JWT_SECRET);
+      const decoded = jwt.verify(token, JWT_SECRET as string);
+      (req as any).user = decoded;
       next();
     } catch (err) {
       return res.status(401).json({ error: "Unauthorized. Token invalid or expired." });
@@ -1404,14 +1422,26 @@ async function startServer() {
   });
 
   app.post("/api/admin/clear-db", (req, res) => {
+    const user = (req as any).user;
+    if (user?.role !== 'superadmin') {
+      return res.status(403).json({ error: "Insufficient permissions" });
+    }
     return res.status(403).json({ error: "Action disabled in production." });
   });
 
   app.post("/api/admin/restore-seed", (req, res) => {
+    const user = (req as any).user;
+    if (user?.role !== 'superadmin') {
+      return res.status(403).json({ error: "Insufficient permissions" });
+    }
     return res.status(403).json({ error: "Action disabled in production." });
   });
 
   app.post("/api/admin/execute-sql", async (req, res) => {
+    const user = (req as any).user;
+    if (user?.role !== 'superadmin') {
+      return res.status(403).json({ error: "Insufficient permissions" });
+    }
     return res.status(403).json({ error: "Access denied. Manual SQL execution disabled for security." });
   });
 

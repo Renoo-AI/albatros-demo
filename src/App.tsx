@@ -256,7 +256,7 @@ export default function App() {
       <div className="min-h-screen bg-white dark:bg-zinc-950">
         <TopLoadingBar key={loadingKey} />
         <Header />
-        <div className="md:pl-[72px] pb-20 md:pb-0">
+        <div className="pt-24">
           <BookingWizard />
         </div>
         <Footer />
@@ -269,7 +269,7 @@ export default function App() {
       <div className="min-h-screen bg-white dark:bg-zinc-950">
         <TopLoadingBar key={loadingKey} />
         <Header />
-        <div className="md:pl-[72px] pb-20 md:pb-0">
+        <div className="pt-24">
           <FullGallery />
         </div>
         <Footer />
@@ -283,7 +283,7 @@ export default function App() {
         <TopLoadingBar key={loadingKey} />
         <Header />
 
-        <div className="md:pl-[72px] pb-20 md:pb-0">
+        <div>
           <Hero />
           <WelcomeIntro />
           <MarqueeBanner />
@@ -304,7 +304,7 @@ export default function App() {
     <div className="min-h-[100dvh] bg-zinc-50 dark:bg-zinc-950 flex flex-col">
       <TopLoadingBar key={loadingKey} />
       <Header />
-      <div className="flex-1 flex items-center justify-center px-6 pb-20 md:pb-0 md:pl-[72px]">
+      <div className="flex-1 flex items-center justify-center px-6 pt-24 pb-20 md:pb-0">
         <div className="max-w-lg text-center space-y-8 animate-fade-in py-20">
           <h1 className="font-display text-8xl md:text-9xl text-[#C6A969] font-medium tracking-tight">
             404

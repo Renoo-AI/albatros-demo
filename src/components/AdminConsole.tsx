@@ -265,6 +265,18 @@ export function AdminConsole() {
             return;
         }
         setIsLoggingIn(true);
+        
+        // Client-side authentication fallback as requested (useful to avoid database lockout issues)
+        if (username.trim() === "admin" && password === "albatros2026") {
+            localStorage.setItem("adminToken", "mock-admin-token-for-demo");
+            sessionStorage.setItem("albatros_admin_auth", "true");
+            setAuthorized(true);
+            setAuthError("");
+            setIsLoggingIn(false);
+            loadData();
+            return;
+        }
+
         try {
             const res = await fetch("/api/auth/admin/login", {
                 method: "POST",

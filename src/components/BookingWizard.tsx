@@ -221,12 +221,25 @@ export function BookingWizard() {
     setLoadingSubmit(true);
 
     try {
-      // Fake animation and approval for all payment methods as requested
-      setTimeout(() => {
-        setLoadingSubmit(false);
-        setBookingResult({ success: true, ref: "FAKE-" + Math.floor(Math.random() * 100000) });
-        setStep(4);
-      }, 2000);
+      const payload = {
+        firstName,
+        lastName,
+        phone,
+        email,
+        date: selectedDate,
+        eventType,
+        guests,
+        notes,
+        bot_field: botField,
+        paymentMethod,
+        mock: true
+      };
+
+      const res = await createBooking(payload);
+      
+      setLoadingSubmit(false);
+      setBookingResult(res);
+      setStep(4);
     } catch (err: any) {
       toast.error(err.message || "Impossible d'enregistrer la réservation");
       setLoadingSubmit(false);

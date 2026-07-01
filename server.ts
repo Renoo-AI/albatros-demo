@@ -593,7 +593,8 @@ async function startServer() {
       notes,
       paymentIntentId,
       bot_field,
-      paymentMethod
+      paymentMethod,
+      mock
     } = req.body;
 
     // Honeypot check
@@ -651,12 +652,16 @@ async function startServer() {
     if (safePaymentMethod === 'flouci') {
       initialStatus = "pending_payment";
       try {
-        const APP_URL = process.env.APP_URL || `${req.protocol}://${req.get("host")}`;
-        const apiKey = process.env.FLUOCI_API_KEY;
-        const secret = process.env.FLUOCI_SIGNING_SECRET_KEY;
-        if (!apiKey || !secret) {
-          throw new Error("La configuration Flouci est incomplète sur le serveur.");
-        }
+        if (mock) {
+          paymentUrl = null;
+          gatewayRef = "mock_flouci_" + crypto.randomInt(1000, 9999);
+        } else {
+          const APP_URL = process.env.APP_URL || `${req.protocol}://${req.get("host")}`;
+          const apiKey = process.env.FLUOCI_API_KEY;
+          const secret = process.env.FLUOCI_SIGNING_SECRET_KEY;
+          if (!apiKey || !secret) {
+            throw new Error("La configuration Flouci est incomplète sur le serveur.");
+          }
         
         const authHeader = `Bearer ${apiKey}:${secret}`;
         const amountInMillimes = calculatedDeposit * 1000;
@@ -692,6 +697,7 @@ async function startServer() {
 
         paymentUrl = data.result.link;
         gatewayRef = data.result.payment_id;
+        }
       } catch (err: any) {
         console.error("Error creating Flouci payment:", err);
         return res.status(500).json({ error: err.message });
@@ -699,10 +705,14 @@ async function startServer() {
     } else if (safePaymentMethod === 'konnect' || safePaymentMethod === 'd17') {
       initialStatus = "pending_payment";
       try {
-        const { apiKey, walletId, isSandbox } = getKonnect();
-        if (!apiKey || !walletId) {
-          throw new Error("La configuration Konnect est incomplète sur le serveur.");
-        }
+        if (mock) {
+          paymentUrl = null;
+          gatewayRef = "mock_konnect_" + crypto.randomInt(1000, 9999);
+        } else {
+          const { apiKey, walletId, isSandbox } = getKonnect();
+          if (!apiKey || !walletId) {
+            throw new Error("La configuration Konnect est incomplète sur le serveur.");
+          }
         const baseUrl = isSandbox ? 'https://api.sandbox.konnect.network/api/v2' : 'https://api.konnect.network/api/v2';
         const APP_URL = process.env.APP_URL || `${req.protocol}://${req.get("host")}`;
 
@@ -744,6 +754,7 @@ async function startServer() {
 
         paymentUrl = data.payUrl;
         gatewayRef = data.paymentRef;
+        }
       } catch (err: any) {
         console.error("Error creating Konnect payment:", err);
         return res.status(500).json({ error: err.message });

@@ -1,9 +1,9 @@
 import React from 'react';
 
 export class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: any}> {
+  public state = { hasError: false, error: null };
   constructor(props: {children: React.ReactNode}) {
     super(props);
-    this.state = { hasError: false, error: null };
   }
 
   static getDerivedStateFromError(error: any) {
@@ -24,6 +24,7 @@ export class ErrorBoundary extends React.Component<{children: React.ReactNode}, 
         </div>
       );
     }
+    // @ts-ignore
     return this.props.children;
   }
 }

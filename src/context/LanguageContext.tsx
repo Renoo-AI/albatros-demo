@@ -24,6 +24,10 @@ const translations: Record<Language, Record<string, string>> = {
     "hero.cta_book": "Réserver une date",
     "hero.cta_discover": "Découvrir le lieu",
     
+    // CtaBanner
+    "cta.title": "Prêt à créer des souvenirs inoubliables ?",
+    "cta.text": "Réservez votre date dès maintenant et laissez-nous transformer votre vision en une célébration extraordinaire.",
+    
     // Welcome
     "welcome.title": "Le prestige d'une célébration réussie",
     "welcome.text": "Situé à Manouba, Albatros est le lieu d'exception pour tous vos événements marquants. Que ce soit pour un mariage féerique, des fiançailles mémorables ou une réception de haut standing, notre salle raffinée et notre équipe dévouée mettent tout en œuvre pour faire de votre célébration un moment inoubliable et magique.",
@@ -46,6 +50,8 @@ const translations: Record<Language, Record<string, string>> = {
     
     // Galerie
     "galerie.title": "Moments d'exception",
+    "galerie.see_more": "Voir plus",
+    "galerie.return": "Retour",
     
     // Testimonials
     "testimonials.title": "L'avis de nos invités",
@@ -121,6 +127,11 @@ const translations: Record<Language, Record<string, string>> = {
     "booking.success_title": "Réservation confirmée",
     "booking.success_text": "Votre acompte a bien été reçu. Nous vous contacterons sous 24h pour finaliser les détails.",
     "booking.success_ref": "Réf: {ref}",
+    "booking.choose_payment_method": "Choisir votre méthode de paiement :",
+    "booking.stripe_desc": "Cartes internationales (Visa / Mastercard)",
+    "booking.flouci_desc": "Portefeuille mobile et cartes bancaires locales",
+    "booking.konnect_desc": "e-DINAR, Sobflous et portefeuilles tunisiens",
+    "booking.d17_desc": "Paiement mobile via l'application Poste D17",
     
     // Stripe cancel/success page in App.tsx
     "success.title": "Réservation confirmée",
@@ -168,6 +179,10 @@ const translations: Record<Language, Record<string, string>> = {
     "hero.cta_book": "Book a date",
     "hero.cta_discover": "Discover the venue",
     
+    // CtaBanner
+    "cta.title": "Ready to create unforgettable memories?",
+    "cta.text": "Book your date now and let us transform your vision into an extraordinary celebration.",
+    
     // Welcome
     "welcome.title": "The prestige of a successful celebration",
     "welcome.text": "Located in Manouba, Albatros is the exceptional venue for all your landmark events. Whether for a magical wedding, a memorable engagement, or a high-class reception, our refined hall and dedicated team do everything to make your celebration an unforgettable and magical moment.",
@@ -190,6 +205,8 @@ const translations: Record<Language, Record<string, string>> = {
     
     // Galerie
     "galerie.title": "Exceptional moments",
+    "galerie.see_more": "See more",
+    "galerie.return": "Return",
     
     // Testimonials
     "testimonials.title": "Guest reviews",
@@ -265,6 +282,11 @@ const translations: Record<Language, Record<string, string>> = {
     "booking.success_title": "Booking confirmed",
     "booking.success_text": "Your deposit has been successfully received. We will contact you within 24 hours to finalize details.",
     "booking.success_ref": "Ref: {ref}",
+    "booking.choose_payment_method": "Choose your payment method:",
+    "booking.stripe_desc": "International cards (Visa / Mastercard)",
+    "booking.flouci_desc": "Mobile wallet and local bank cards",
+    "booking.konnect_desc": "e-DINAR, Sobflous and Tunisian wallets",
+    "booking.d17_desc": "Mobile payment via Poste D17 app",
     
     // Stripe cancel/success page in App.tsx
     "success.title": "Booking confirmed",
@@ -312,6 +334,10 @@ const translations: Record<Language, Record<string, string>> = {
     "hero.cta_book": "احجز تاريخاً",
     "hero.cta_discover": "اكتشف المكان",
     
+    // CtaBanner
+    "cta.title": "هل أنت مستعد لصنع ذكريات لا تُنسى؟",
+    "cta.text": "احجز موعدك الآن ودعنا نحول رؤيتك إلى احتفال استثنائي.",
+    
     // Welcome
     "welcome.title": "فخامة الاحتفالات الناجحة",
     "welcome.text": "تقع قاعة الباتروس (Albatros) في منوبة، وهي المكان المثالي لجميع مناسباتكم المميزة. سواء كان حفل زفاف أسطوري، خطوبة مميزة، أو استقبال راقٍ، فإن قاعتنا الفخمة وفريقنا المتفاني يبذلون قصارى جهدهم لجعل احتفالكم لحظة سحرية لا تُنسى.",
@@ -334,6 +360,8 @@ const translations: Record<Language, Record<string, string>> = {
     
     // Galerie
     "galerie.title": "لحظات استثنائية",
+    "galerie.see_more": "عرض المزيد",
+    "galerie.return": "رجوع",
     
     // Testimonials
     "testimonials.title": "آراء ضيوفنا الكرام",
@@ -409,6 +437,11 @@ const translations: Record<Language, Record<string, string>> = {
     "booking.success_title": "تم تأكيد الحجز بنجاح",
     "booking.success_text": "لقد تلقينا مبلغ العربون. سنتصل بك في غضون 24 ساعة لإنهاء تفاصيل مناسبتك.",
     "booking.success_ref": "رمز الحجز: {ref}",
+    "booking.choose_payment_method": "اختر طريقة الدفع:",
+    "booking.stripe_desc": "البطاقات الدولية (فيزا / ماستركارد)",
+    "booking.flouci_desc": "المحفظة الإلكترونية والبطاقات البنكية المحلية",
+    "booking.konnect_desc": "الدينار الإلكتروني (e-DINAR) والمحافظ التونسية",
+    "booking.d17_desc": "الدفع عبر الهاتف المحمول (Poste D17)",
     
     // Stripe cancel/success page in App.tsx
     "success.title": "تم تأكيد الحجز",

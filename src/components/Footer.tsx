@@ -41,7 +41,7 @@ export function Footer() {
           </div>
 
           <div className="md:col-span-3 space-y-6">
-            <h4 className="font-mono text-[10px] font-semibold text-[#C6A969] uppercase tracking-[0.2em]">
+            <h4 className="font-sans text-[10px] font-semibold text-[#C6A969] uppercase tracking-[0.2em]">
               {t("footer.nav_title")}
             </h4>
             <ul className="space-y-3 list-none p-0 m-0 font-sans">
@@ -76,7 +76,7 @@ export function Footer() {
           </div>
 
           <div className="md:col-span-4 space-y-6">
-            <h4 className="font-mono text-[10px] font-semibold text-[#C6A969] uppercase tracking-[0.2em]">
+            <h4 className="font-sans text-[10px] font-semibold text-[#C6A969] uppercase tracking-[0.2em]">
               Contact
             </h4>
             <div className="space-y-3 text-sm text-zinc-500 font-sans">
@@ -94,7 +94,7 @@ export function Footer() {
 
       <div className="max-w-7xl mx-auto px-6 py-6 border-t border-zinc-900 text-xs flex flex-col sm:flex-row justify-between items-center gap-4 font-sans text-zinc-600">
         <span>{t("footer.rights", { year: new Date().getFullYear() })}</span>
-        <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-700">
+        <span className="font-sans text-[10px] uppercase tracking-widest text-zinc-700">
           Crafted with excellence
         </span>
       </div>

@@ -115,6 +115,21 @@ html[lang="ar"] textarea {
   body {
     @apply bg-zinc-50 text-zinc-950 dark:bg-zinc-950 dark:text-zinc-50 antialiased selection:bg-[#C6A969]/30 dark:selection:bg-[#C6A969]/30 selection:text-zinc-950 dark:selection:text-white;
   }
+  /* Custom scrollbar styling for a premium dark look */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #09090b;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #27272a;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #c6a969;
+  }
 }
 
 @layer components {
@@ -221,7 +236,7 @@ html[lang="ar"] textarea {
   }
 
   .section-label {
-    @apply font-mono text-[10px] uppercase tracking-[0.25em] text-[#C6A969] font-semibold;
+    @apply font-sans text-[10px] uppercase tracking-[0.25em] text-[#C6A969] font-semibold;
   }
 
   .image-reveal {
@@ -262,5 +277,9 @@ html[lang="ar"] textarea {
   }
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }

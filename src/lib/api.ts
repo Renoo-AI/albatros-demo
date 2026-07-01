@@ -181,6 +181,24 @@ export async function deleteBooking(id: string): Promise<void> {
   if (!res.ok) throw new Error("Failed to delete booking");
 }
 
+export async function restoreBooking(id: string): Promise<void> {
+  const res = await fetch("/api/admin/restore", {
+    method: "POST",
+    headers: getAdminHeaders(),
+    body: JSON.stringify({ id }),
+  });
+  if (!res.ok) throw new Error("Failed to restore booking");
+}
+
+export async function permanentDeleteBooking(id: string): Promise<void> {
+  const res = await fetch("/api/admin/permanent-delete", {
+    method: "POST",
+    headers: getAdminHeaders(),
+    body: JSON.stringify({ id }),
+  });
+  if (!res.ok) throw new Error("Failed to permanently delete booking");
+}
+
 export async function editBooking(id: string, updates: Partial<Booking>): Promise<void> {
   const res = await fetch("/api/admin/edit-booking", {
     method: "POST",
@@ -291,5 +309,17 @@ export async function recordManualPayment(id: string, method: string): Promise<v
   if (!res.ok) {
     const err = await res.json();
     throw new Error(err.error || "Failed to record manual payment");
+  }
+}
+
+export async function updateSettings(settings: Partial<BusinessSettings>): Promise<void> {
+  const res = await fetch("/api/admin/settings", {
+    method: "POST",
+    headers: getAdminHeaders(),
+    body: JSON.stringify(settings),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || "Failed to update settings");
   }
 }

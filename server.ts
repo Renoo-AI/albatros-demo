@@ -34,6 +34,7 @@ try {
 
 const BOOKINGS_FILE = path.join(DATA_DIR, "bookings.json");
 const BLOCKED_FILE = path.join(DATA_DIR, "blocked_dates.json");
+const SETTINGS_FILE = path.join(DATA_DIR, "settings.json");
 
 // Helper to convert Web Request/Response for Express
 function runFetchHandler(handler: (req: Request) => Promise<Response>) {
@@ -130,6 +131,48 @@ async function readLocalBlocked(): Promise<any[]> {
 // Helper to write local blocked dates asynchronously
 async function writeLocalBlocked(dates: any[]): Promise<void> {
   await fs.promises.writeFile(BLOCKED_FILE, JSON.stringify(dates, null, 2));
+}
+
+const DEFAULT_SETTINGS = {
+  business_name: "Salle Des Fêtes Albatros",
+  business_email: "albatros.manouba@gmail.com",
+  business_phone: "+216 98 687 124",
+  business_address: "Av Complexe Sportif, Manouba 2010, Tunisie",
+  google_maps_url: "https://maps.google.com/?q=Av+Complexe+Sportif,+Manouba+2010,+Tunisia",
+  facebook_url: "https://www.facebook.com/salle.albatros.manouba",
+  instagram_handle: "@albatros.manouba",
+  tiktok_handle: null,
+  currency: "TND",
+  timezone: "Africa/Tunis",
+  default_locale: "fr",
+  min_guests: 50,
+  max_guests: 400,
+  min_lead_days: 14,
+  full_refund_days: 30,
+  partial_refund_days: 7,
+  deposit_percent: 30,
+  working_days: [4, 5, 6],
+  open_time: "11:00",
+  close_time: "03:00"
+};
+
+async function readLocalSettings(): Promise<any> {
+  if (!fs.existsSync(SETTINGS_FILE)) {
+    try {
+      await fs.promises.writeFile(SETTINGS_FILE, JSON.stringify(DEFAULT_SETTINGS, null, 2));
+    } catch {}
+    return DEFAULT_SETTINGS;
+  }
+  try {
+    const data = await fs.promises.readFile(SETTINGS_FILE, "utf-8");
+    return JSON.parse(data);
+  } catch (e) {
+    return DEFAULT_SETTINGS;
+  }
+}
+
+async function writeLocalSettings(settings: any): Promise<void> {
+  await fs.promises.writeFile(SETTINGS_FILE, JSON.stringify(settings, null, 2));
 }
 
 // Lazy SDK Initializers
@@ -472,29 +515,7 @@ async function startServer() {
       }
     }
 
-    // Default Fallback
-    res.json({
-      business_name: "Salle Des Fêtes Albatros",
-      business_email: "albatros.manouba@gmail.com",
-      business_phone: "+216 98 687 124",
-      business_address: "Av Complexe Sportif, Manouba 2010, Tunisie",
-      google_maps_url: "https://maps.google.com/?q=Av+Complexe+Sportif,+Manouba+2010,+Tunisia",
-      facebook_url: "https://www.facebook.com/salle.albatros.manouba",
-      instagram_handle: "@albatros.manouba",
-      tiktok_handle: null,
-      currency: "TND",
-      timezone: "Africa/Tunis",
-      default_locale: "fr",
-      min_guests: 50,
-      max_guests: 400,
-      min_lead_days: 14,
-      full_refund_days: 30,
-      partial_refund_days: 7,
-      deposit_percent: 30,
-      working_days: [4, 5, 6], // Thursday, Friday, Saturday
-      open_time: "11:00",
-      close_time: "03:00"
-    });
+    res.json(await readLocalSettings());
   });
 
   // Endpoint: Get booked & blocked dates (Privacy-preserving, queries public view to protect GDPR data)
@@ -893,7 +914,7 @@ async function startServer() {
       return res.json({ token });
     } else {
       // Local fallback (if no supabase)
-      const LOCAL_ADMIN_USER = process.env.ADMIN_USER;
+      const LOCAL_ADMIN_USER = process.env.ADMIN_USER || "admin";
       const LOCAL_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
       
       if (LOCAL_ADMIN_USER && LOCAL_ADMIN_PASSWORD && username === LOCAL_ADMIN_USER && password === LOCAL_ADMIN_PASSWORD) {
@@ -948,12 +969,13 @@ async function startServer() {
     const gateway = booking.payment_gateway || (booking.stripe_payment_intent_id ? 'stripe' : 'flouci');
     const gatewayRef = booking.gateway_reference || booking.stripe_payment_intent_id || booking.flouci_transaction_reference;
 
-    if (!gatewayRef) {
-      return res.status(400).json({ error: "Aucun paiement à rembourser pour cette réservation" });
-    }
-
     let refundSuccess = false;
     let errorMessage = "";
+
+    if (!gatewayRef) {
+      // Cash/cheque bookings with no gateway — cancel directly
+      refundSuccess = true;
+    }
 
     try {
       if (gateway === 'stripe') {
@@ -1023,6 +1045,8 @@ async function startServer() {
     }
   });
 
+
+
   app.post("/api/admin/manual-pay", async (req, res) => {
     const { id, method } = req.body;
     if (!id || !method) return res.status(400).json({ error: "Missing fields" });
@@ -1085,6 +1109,7 @@ async function startServer() {
             gateway_reference: b.gateway_reference || b.stripe_payment_intent_id || b.flouci_transaction_reference,
             gateway_status: b.gateway_status || 'pending',
             flouci_payment_url: b.flouci_payment_url,
+            deletedAt: b.deleted_at || undefined,
             createdAt: b.created_at
           };
         });
@@ -1270,7 +1295,54 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  // Soft-delete: mark as deleted instead of removing
   app.post("/api/admin/delete", async (req, res) => {
+    const { id } = req.body;
+    if (!id) return res.status(400).json({ error: "Missing id" });
+    const safeId = xss(String(id));
+
+    const supabase = getSupabaseAdmin() || getSupabase();
+    if (supabase) {
+      await supabase.from("bookings").update({ deleted_at: new Date().toISOString() }).eq("booking_ref", safeId);
+    } else {
+      await fileMutex.runExclusive(async () => {
+        const bookings = await readLocalBookings();
+        const match = bookings.find((b) => b.id === safeId);
+        if (match) {
+          match.deletedAt = new Date().toISOString();
+          await writeLocalBookings(bookings);
+        }
+      });
+    }
+
+    res.json({ success: true });
+  });
+
+  // Restore a soft-deleted booking
+  app.post("/api/admin/restore", async (req, res) => {
+    const { id } = req.body;
+    if (!id) return res.status(400).json({ error: "Missing id" });
+    const safeId = xss(String(id));
+
+    const supabase = getSupabaseAdmin() || getSupabase();
+    if (supabase) {
+      await supabase.from("bookings").update({ deleted_at: null }).eq("booking_ref", safeId);
+    } else {
+      await fileMutex.runExclusive(async () => {
+        const bookings = await readLocalBookings();
+        const match = bookings.find((b) => b.id === safeId);
+        if (match) {
+          delete match.deletedAt;
+          await writeLocalBookings(bookings);
+        }
+      });
+    }
+
+    res.json({ success: true });
+  });
+
+  // Permanently delete a booking from the database
+  app.post("/api/admin/permanent-delete", async (req, res) => {
     const { id } = req.body;
     if (!id) return res.status(400).json({ error: "Missing id" });
     const safeId = xss(String(id));
@@ -1283,6 +1355,36 @@ async function startServer() {
         let bookings = await readLocalBookings();
         bookings = bookings.filter((b) => b.id !== safeId);
         await writeLocalBookings(bookings);
+      });
+    }
+
+    res.json({ success: true });
+  });
+
+  app.post("/api/admin/settings", async (req, res) => {
+    const updates = req.body;
+    const supabase = getSupabaseAdmin() || getSupabase();
+
+    if (supabase) {
+      const { data: currentSettings, error: selectError } = await supabase.from("business_settings").select("id").limit(1);
+      if (!selectError && currentSettings && currentSettings.length > 0) {
+        const { error: updateError } = await supabase.from("business_settings").update(updates).eq("id", currentSettings[0].id);
+        if (updateError) {
+          console.error("Supabase settings update error:", updateError);
+          return res.status(500).json({ error: "Database update failed" });
+        }
+      } else {
+        const { error: insertError } = await supabase.from("business_settings").insert(updates);
+        if (insertError) {
+          console.error("Supabase settings insert error:", insertError);
+          return res.status(500).json({ error: "Database insert failed" });
+        }
+      }
+    } else {
+      await fileMutex.runExclusive(async () => {
+        const currentLocal = await readLocalSettings();
+        const merged = { ...currentLocal, ...updates };
+        await writeLocalSettings(merged);
       });
     }
 

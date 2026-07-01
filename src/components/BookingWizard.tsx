@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import type { EventTypeSlug, BusinessSettings } from "../types";
 import { fetchAvailability, createBooking, type CreateBookingInput, type CreateBookingResult, fetchSettings, fetchConfigStatus } from "../lib/api";
 import { motion, AnimatePresence } from "motion/react";
-import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+
 import toast from "react-hot-toast";
 import { useLanguage } from "../context/LanguageContext";
 
@@ -23,8 +23,7 @@ const eventIcons: Record<EventTypeSlug, string> = {
 };
 
 export function BookingWizard() {
-  const stripe = useStripe();
-  const elements = useElements();
+
   const { t } = useLanguage();
 
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
@@ -222,70 +221,14 @@ export function BookingWizard() {
     setLoadingSubmit(true);
 
     try {
-      if (paymentMethod === 'stripe') {
-        if (!stripe || !elements) {
-          throw new Error("Paiement par carte indisponible (Stripe non initialisé).");
-        }
-        const cardElement = elements.getElement(CardElement);
-        if (!cardElement) throw new Error("Card element not found");
-
-        const intentResult = await import("../lib/api").then(m => m.createPaymentIntent(eventType));
-
-        if (intentResult.mock) {
-          const result = await createBooking({
-            firstName, lastName, phone, email, date: selectedDate, eventType, guests, notes, paymentIntentId: "mock_pi_" + Date.now(), bot_field: botField, paymentMethod: 'stripe'
-          });
-          setBookingResult(result);
-          setStep(4);
-          return;
-        }
-
-        const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(intentResult.clientSecret, {
-          payment_method: {
-            card: cardElement as any,
-            billing_details: { name: `${firstName} ${lastName}`, email, phone },
-          },
-        });
-
-        if (stripeError) throw new Error(stripeError.message);
-
-        if (paymentIntent && paymentIntent.status === "requires_capture") {
-          const result = await createBooking({
-            firstName, lastName, phone, email, date: selectedDate, eventType, guests, notes, paymentIntentId: paymentIntent.id, bot_field: botField, paymentMethod: 'stripe'
-          });
-          setBookingResult(result);
-          setStep(4);
-        } else {
-          throw new Error("Le paiement n'a pas pu être autorisé. Veuillez réessayer.");
-        }
-      } else {
-        // Flouci, Konnect or D17 redirect flow
-        const result = await createBooking({
-          firstName,
-          lastName,
-          phone,
-          email,
-          date: selectedDate,
-          eventType,
-          guests,
-          notes,
-          bot_field: botField,
-          paymentMethod
-        });
-        
-        if (result.success && result.paymentUrl) {
-          toast.success("Redirection vers la passerelle sécurisée...");
-          setTimeout(() => {
-            window.location.href = result.paymentUrl!;
-          }, 1000);
-        } else {
-          throw new Error("Impossible de générer le lien de paiement.");
-        }
-      }
-
+      // Fake animation and approval for all payment methods as requested
+      setTimeout(() => {
+        setLoadingSubmit(false);
+        setBookingResult({ success: true, ref: "FAKE-" + Math.floor(Math.random() * 100000) });
+        setStep(4);
+      }, 2000);
     } catch (err: any) {
       toast.error(err.message || "Impossible d'enregistrer la réservation");
-    } finally {
       setLoadingSubmit(false);
     }
   };
@@ -365,7 +308,7 @@ export function BookingWizard() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                   {/* Day input */}
                   <div className="flex flex-col text-left">
-                    <label className="text-xs font-mono uppercase tracking-wider text-zinc-400 mb-2">Jour</label>
+                    <label className="text-xs font-sans uppercase tracking-wider text-zinc-400 mb-2">Jour</label>
                     <input
                       type="number"
                       min="1"
@@ -391,7 +334,7 @@ export function BookingWizard() {
 
                   {/* Month input */}
                   <div className="flex flex-col text-left">
-                    <label className="text-xs font-mono uppercase tracking-wider text-zinc-400 mb-2">Mois</label>
+                    <label className="text-xs font-sans uppercase tracking-wider text-zinc-400 mb-2">Mois</label>
                     <input
                       type="number"
                       min="1"
@@ -423,7 +366,7 @@ export function BookingWizard() {
 
                   {/* Year input */}
                   <div className="flex flex-col text-left">
-                    <label className="text-xs font-mono uppercase tracking-wider text-zinc-400 mb-2">Année</label>
+                    <label className="text-xs font-sans uppercase tracking-wider text-zinc-400 mb-2">Année</label>
                     <input
                       type="number"
                       min={new Date().getFullYear()}
@@ -528,7 +471,19 @@ export function BookingWizard() {
                   </div>
                   <div className="flex flex-col text-left">
                     <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-2">{t("booking.phone")}</label>
-                    <input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} className="input-lux" placeholder={t("booking.phone_placeholder")} />
+                    <input
+                      type="tel"
+                      required
+                      maxLength={8}
+                      pattern="[0-9]{8}"
+                      value={phone}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '');
+                        if (val.length <= 8) setPhone(val);
+                      }}
+                      className="input-lux"
+                      placeholder={t("booking.phone_placeholder")}
+                    />
                   </div>
                   <div className="flex flex-col text-left">
                     <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-2">{t("booking.email")}</label>
@@ -610,111 +565,76 @@ export function BookingWizard() {
 
               <div className="space-y-4">
                 <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white block">
-                  Choisir votre méthode de paiement :
+                  {t("booking.choose_payment_method")}
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {(!config || config.stripe) && (
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('stripe')}
-                      className={`p-4 border text-left transition-all duration-300 rounded-lg flex flex-col gap-3 cursor-pointer ${
-                        paymentMethod === 'stripe'
-                          ? "border-[#C6A969] bg-[#C6A969]/5 shadow-sm"
-                          : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:border-[#C6A969]/30"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-medium text-sm text-zinc-900 dark:text-white">Stripe</span>
-                        <svg viewBox="0 0 120 30" className="h-6" fill={isDarkMode ? "#fff" : "#635bff"}>
-                          <path d="M108.1 6.7c-1.4 0-2.6.4-3.5 1.1V0l-4.1.9v18.8c0 4.2 2 6.8 6.1 6.8 2 0 3.9-.6 5.4-1.5l-.9-3.3c-1 .5-2.1.9-3.4.9-2 0-3-1.3-3-3.3v-6.9c.8-.7 2.1-1.1 3.5-1.1 3.1 0 4.9 1.8 4.9 5.2v2.7l4.1-.1V12c0-4-2.1-5.3-6.1-5.3zM69.3 6.7c-4 0-6.5 2.4-6.5 6.7 0 4.4 2.5 6.8 6.7 6.8 1.6 0 3.3-.4 4.7-1.1l-.5-3.2c-1 .4-2.3.7-3.5.7-1.8 0-3.3-.8-3.5-2.8h10.5v-1.4c.1-3.8-2.1-5.7-7.9-5.7zm3.5 6.2H66c.2-1.7 1.3-2.7 3.1-2.7s2.7 1 2.7 2.7zM47.2 6.7c-3.2 0-5.2 1.5-6.1 3.4l-.3-2.9h-4v17.3l4.1-.9v-5.7c.8 1.4 2.5 2.3 4.6 2.3 3.9 0 6.4-2.4 6.4-6.8.1-4.2-2.3-6.7-4.7-6.7zm-1 9.7c-1.5 0-2.7-.8-3.1-2.2v-2.9c.4-1.4 1.6-2.2 3.1-2.2 1.9 0 3 1.6 3 3.7 0 2-.1 3.6-3 3.6zM86.7 6.7c-3.2 0-5.2 1.5-6.1 3.4l-.3-2.9h-4v17.3l4.1-.9v-5.7c.8 1.4 2.5 2.3 4.6 2.3 3.9 0 6.4-2.4 6.4-6.8 0-4.2-2.3-6.7-4.7-6.7zm-.9 9.7c-1.5 0-2.7-.8-3.1-2.2v-2.9c.4-1.4 1.6-2.2 3.1-2.2 1.9 0 3 1.6 3 3.7 0 2-.1 3.6-3 3.6zM28.2 10.1c0-1.1.9-1.6 2.4-1.6 1.8 0 3.6.5 5.1 1.3l.8-3.4C34.6 5.4 32.4 5 30.1 5c-4.7 0-7.3 2.1-7.3 5.9 0 5.8 8 4.6 8 7 0 1.3-1.1 1.8-2.9 1.8-2.2 0-4.4-.8-6.1-1.8l-.8 3.5c2.1 1.1 4.5 1.7 6.9 1.7 4.9 0 7.5-2.2 7.5-6.2 0-5.9-8-4.8-8-7zM0 11.3v3.9h5.7v11.2h4.3V15.3h5.7v-4H0z"/>
-                        </svg>
-                      </div>
-                      <span className="text-xs text-zinc-500">Cartes internationales (Visa / Mastercard)</span>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('stripe')}
+                    className={`p-4 border text-center transition-all duration-300 rounded-lg flex flex-col gap-3 items-center cursor-pointer ${
+                      paymentMethod === 'stripe'
+                        ? "border-[#C6A969] bg-[#C6A969]/5 shadow-sm"
+                        : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:border-[#C6A969]/30"
+                    }`}
+                  >
+                    <div className="flex items-center justify-center w-full h-8">
+                      <img src="/media/stripe.png" alt="Stripe" className="h-full object-contain" />
+                    </div>
+                    <span className="text-xs text-zinc-500">{t("booking.stripe_desc")}</span>
+                  </button>
 
-                  {(!config || config.flouci) && (
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('flouci')}
-                      className={`p-4 border text-left transition-all duration-300 rounded-lg flex flex-col gap-3 cursor-pointer ${
-                        paymentMethod === 'flouci'
-                          ? "border-[#C6A969] bg-[#C6A969]/5 shadow-sm"
-                          : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:border-[#C6A969]/30"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-medium text-sm text-zinc-900 dark:text-white">Flouci</span>
-                        <svg viewBox="0 0 100 28" className="h-5" fill={isDarkMode ? "#fff" : "#1a1a2e"}>
-                          <text x="0" y="22" fontSize="20" fontWeight="700" fontFamily="sans-serif">Flouci</text>
-                          <rect x="68" y="4" width="24" height="20" rx="4" stroke={isDarkMode ? "#fff" : "#1a1a2e"} strokeWidth="2" fill="none"/>
-                          <circle cx="80" cy="14" r="4" fill={isDarkMode ? "#fff" : "#1a1a2e"}/>
-                        </svg>
-                      </div>
-                      <span className="text-xs text-zinc-500">Portefeuille mobile et cartes bancaires locales</span>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('flouci')}
+                    className={`p-4 border text-center transition-all duration-300 rounded-lg flex flex-col gap-3 items-center cursor-pointer ${
+                      paymentMethod === 'flouci'
+                        ? "border-[#C6A969] bg-[#C6A969]/5 shadow-sm"
+                        : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:border-[#C6A969]/30"
+                    }`}
+                  >
+                    <div className="flex items-center justify-center w-full h-8">
+                      <img src="/media/flouci.png" alt="Flouci" className="h-full object-contain" />
+                    </div>
+                    <span className="text-xs text-zinc-500">{t("booking.flouci_desc")}</span>
+                  </button>
 
-                  {(!config || config.konnect) && (
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('konnect')}
-                      className={`p-4 border text-left transition-all duration-300 rounded-lg flex flex-col gap-3 cursor-pointer ${
-                        paymentMethod === 'konnect'
-                          ? "border-[#C6A969] bg-[#C6A969]/5 shadow-sm"
-                          : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:border-[#C6A969]/30"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-medium text-sm text-zinc-900 dark:text-white">Konnect</span>
-                        <svg viewBox="0 0 100 28" className="h-5" fill={isDarkMode ? "#fff" : "#e60000"}>
-                          <text x="0" y="22" fontSize="20" fontWeight="700" fontFamily="sans-serif">Konnect</text>
-                          <circle cx="80" cy="14" r="9" fill="none" stroke={isDarkMode ? "#fff" : "#e60000"} strokeWidth="2"/>
-                          <circle cx="80" cy="14" r="3" fill={isDarkMode ? "#fff" : "#e60000"}/>
-                        </svg>
-                      </div>
-                      <span className="text-xs text-zinc-500">e-DINAR, Sobflous et portefeuilles tunisiens</span>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('konnect')}
+                    className={`p-4 border text-center transition-all duration-300 rounded-lg flex flex-col gap-3 items-center cursor-pointer ${
+                      paymentMethod === 'konnect'
+                        ? "border-[#C6A969] bg-[#C6A969]/5 shadow-sm"
+                        : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:border-[#C6A969]/30"
+                    }`}
+                  >
+                    <div className="flex items-center justify-center w-full h-8">
+                      <img src="/media/konnect.png" alt="Konnect" className="h-full object-contain" />
+                    </div>
+                    <span className="text-xs text-zinc-500">{t("booking.konnect_desc")}</span>
+                  </button>
 
-                  {(!config || config.konnect) && (
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('d17')}
-                      className={`p-4 border text-left transition-all duration-300 rounded-lg flex flex-col gap-3 cursor-pointer ${
-                        paymentMethod === 'd17'
-                          ? "border-[#C6A969] bg-[#C6A969]/5 shadow-sm"
-                          : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:border-[#C6A969]/30"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-medium text-sm text-zinc-900 dark:text-white">D17</span>
-                        <svg viewBox="0 0 100 28" className="h-5" fill={isDarkMode ? "#fff" : "#003366"}>
-                          <text x="0" y="22" fontSize="20" fontWeight="700" fontFamily="sans-serif">D17</text>
-                          <rect x="62" y="6" width="30" height="16" rx="3" fill="none" stroke={isDarkMode ? "#fff" : "#003366"} strokeWidth="2"/>
-                          <line x1="77" y1="6" x2="77" y2="22" stroke={isDarkMode ? "#fff" : "#003366"} strokeWidth="2"/>
-                        </svg>
-                      </div>
-                      <span className="text-xs text-zinc-500">Paiement mobile via l'application Poste D17</span>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('d17')}
+                    className={`p-4 border text-center transition-all duration-300 rounded-lg flex flex-col gap-3 items-center cursor-pointer ${
+                      paymentMethod === 'd17'
+                        ? "border-[#C6A969] bg-[#C6A969]/5 shadow-sm"
+                        : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:border-[#C6A969]/30"
+                    }`}
+                  >
+                    <div className="flex items-center justify-center w-full h-8">
+                      <img src="/media/d17.png" alt="D17" className="h-full object-contain" />
+                    </div>
+                    <span className="text-xs text-zinc-500">{t("booking.d17_desc")}</span>
+                  </button>
                 </div>
               </div>
 
               <form onSubmit={handlePaymentSubmit} className="space-y-6">
-                {paymentMethod === 'stripe' ? (
-                  <div className="flex flex-col text-left">
-                    <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-2">{t("booking.card_info")}</label>
-                    <div className="px-4 py-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus-within:border-[#C6A969] focus-within:ring-1 focus-within:ring-[#C6A969]/30 transition-all">
-                      <CardElement options={{ style: { base: { fontSize: '15px', color: isDarkMode ? '#ffffff' : '#18181b', '::placeholder': { color: '#a1a1aa' } }, invalid: { color: '#ef4444' } } }} />
-                    </div>
-                  </div>
-                ) : (
                   <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-sm font-sans flex items-center gap-3">
                     <i className="fa-solid fa-circle-info text-[#C6A969] text-base"></i>
-                    <span>Vous allez être redirigé vers la passerelle sécurisée du fournisseur pour finaliser le paiement de l'acompte.</span>
+                    <span>Vous allez simuler le paiement pour approuver la réservation.</span>
                   </div>
-                )}
 
                 <div className="flex justify-between pt-6">
                   <button type="button" onClick={() => setStep(2)} className="btn btn-outline cursor-pointer" disabled={loadingSubmit}>
@@ -750,7 +670,7 @@ export function BookingWizard() {
                 </p>
               </div>
 
-              <div className="inline-block bg-[#C6A969]/5 border border-[#C6A969]/20 px-6 py-3 text-sm font-mono text-zinc-950 dark:text-white font-medium">
+              <div className="inline-block bg-[#C6A969]/5 border border-[#C6A969]/20 px-6 py-3 text-sm font-sans text-zinc-950 dark:text-white font-medium">
                 {t("booking.success_ref", { ref: bookingResult.ref })}
               </div>
             </motion.div>

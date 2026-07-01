@@ -32,6 +32,7 @@ export interface Booking {
   gateway_reference?: string;
   gateway_status?: string;
   flouci_payment_url?: string;
+  deletedAt?: string;
   createdAt: string;
 }
 

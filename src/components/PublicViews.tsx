@@ -36,7 +36,7 @@ export function Hero() {
             className="flex items-center gap-4"
           >
             <div className="w-10 h-px bg-[#C6A969]/60" />
-            <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#C6A969]/80 font-medium">
+            <span className="font-sans text-[10px] uppercase tracking-[0.3em] text-[#C6A969]/80 font-medium">
               Manouba, Tunisie
             </span>
             <div className="w-10 h-px bg-[#C6A969]/60" />
@@ -93,7 +93,7 @@ export function Hero() {
         transition={{ delay: 1.5, duration: 1 }}
         className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-3"
       >
-        <span className="font-mono text-[9px] uppercase tracking-[0.3em] text-white/30">Scroll</span>
+        <span className="font-sans text-[9px] uppercase tracking-[0.3em] text-white/30">Scroll</span>
         <motion.div
           animate={{ y: [0, 8, 0], opacity: [0.3, 0.8, 0.3] }}
           transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
@@ -395,6 +395,20 @@ export function Galerie() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <div className="flex justify-center mt-12">
+        <a
+          href="/gallery"
+          onClick={(e) => {
+            e.preventDefault();
+            window.history.pushState({}, "", "/gallery");
+            window.scrollTo(0, 0);
+          }}
+          className="btn border border-[#C6A969]/50 text-[#C6A969] hover:bg-[#C6A969]/10 hover:border-[#C6A969]"
+        >
+          {t("galerie.see_more")}
+        </a>
+      </div>
     </section>
   );
 }

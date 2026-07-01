@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { loadStripe } from "@stripe/stripe-js";
-import { Elements } from "@stripe/react-stripe-js";
+
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
 import { useLanguage } from "./context/LanguageContext";
@@ -16,12 +15,8 @@ import {
 import { BookingWizard } from "./components/BookingWizard";
 import { AdminConsole } from "./components/AdminConsole";
 import { TopLoadingBar } from "./components/Preloader";
+import { FullGallery } from "./components/FullGallery";
 
-const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-if (!stripeKey) {
-  console.warn("VITE_STRIPE_PUBLISHABLE_KEY is not set. Stripe payments will not work.");
-}
-const stripePromise = stripeKey ? loadStripe(stripeKey) : null;
 
 function MarqueeBanner() {
   const items = ["Mariages", "Fiançailles", "Anniversaires", "Événements", "Réceptions", "Soirées", "Conférences"];
@@ -55,15 +50,15 @@ function CtaBanner() {
       <div className="relative z-10 max-w-3xl mx-auto text-center space-y-8">
         <div className="flex justify-center items-center gap-4">
           <div className="w-12 h-px bg-[#C6A969]/50" />
-          <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#C6A969] font-medium">Albatros</span>
+          <span className="font-sans text-[10px] uppercase tracking-[0.3em] text-[#C6A969] font-medium">Albatros</span>
           <div className="w-12 h-px bg-[#C6A969]/50" />
         </div>
 
         <h2 className="font-display text-3xl md:text-5xl text-white font-medium tracking-tight leading-tight">
-          Prêt à créer des souvenirs inoubliables ?
+          {t("cta.title", { defaultValue: "Prêt à créer des souvenirs inoubliables ?" })}
         </h2>
         <p className="text-zinc-400 text-base md:text-lg max-w-xl mx-auto leading-relaxed font-sans">
-          Réservez votre date dès maintenant et laissez-nous transformer votre vision en une célébration extraordinaire.
+          {t("cta.text", { defaultValue: "Réservez votre date dès maintenant et laissez-nous transformer votre vision en une célébration extraordinaire." })}
         </p>
 
         <div className="flex flex-wrap justify-center gap-4 pt-4">
@@ -80,9 +75,10 @@ function CtaBanner() {
           </a>
           <a
             href="tel:+21698687124"
+            dir="ltr"
             className="btn border border-white/20 text-white hover:bg-white/10 hover:border-white/40"
           >
-            <i className="fa-solid fa-phone mr-2 text-xs"></i>
+            <i className="fa-solid fa-phone me-2 text-xs"></i>
             +216 98 687 124
           </a>
         </div>
@@ -169,7 +165,7 @@ export default function App() {
               <div className="font-sans text-xs uppercase tracking-widest text-[#C6A969] mb-1">
                 {t("success.ref_title")}
               </div>
-              <div className="font-mono text-xl text-zinc-950 dark:text-white font-medium">
+              <div className="font-sans text-xl text-zinc-950 dark:text-white font-medium">
                 {ref}
               </div>
             </div>
@@ -211,7 +207,7 @@ export default function App() {
           </div>
 
           {ref && (
-            <div className="text-xs text-zinc-400 font-mono">
+            <div className="text-xs text-zinc-400 font-sans">
               {t("success.ref_title")} : {ref}
             </div>
           )}
@@ -260,10 +256,21 @@ export default function App() {
       <div className="min-h-screen bg-white dark:bg-zinc-950">
         <TopLoadingBar key={loadingKey} />
         <Header />
-        <div className="pt-12">
-          <Elements stripe={stripePromise}>
-            <BookingWizard />
-          </Elements>
+        <div className="md:pl-[72px] pb-20 md:pb-0">
+          <BookingWizard />
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (currentPath === "/gallery") {
+    return (
+      <div className="min-h-screen bg-white dark:bg-zinc-950">
+        <TopLoadingBar key={loadingKey} />
+        <Header />
+        <div className="md:pl-[72px] pb-20 md:pb-0">
+          <FullGallery />
         </div>
         <Footer />
       </div>
@@ -276,16 +283,17 @@ export default function App() {
         <TopLoadingBar key={loadingKey} />
         <Header />
 
-        <Hero />
-        <WelcomeIntro />
-        <MarqueeBanner />
-        <LoungeSection />
-        <SalleSection />
-        <Galerie />
-        <Testimonials />
-        <InfoSection />
-        <CtaBanner />
-
+        <div className="md:pl-[72px] pb-20 md:pb-0">
+          <Hero />
+          <WelcomeIntro />
+          <MarqueeBanner />
+          <LoungeSection />
+          <SalleSection />
+          <Galerie />
+          <Testimonials />
+          <InfoSection />
+          <CtaBanner />
+        </div>
         <Footer />
         <BackToTop />
       </div>
@@ -296,7 +304,7 @@ export default function App() {
     <div className="min-h-[100dvh] bg-zinc-50 dark:bg-zinc-950 flex flex-col">
       <TopLoadingBar key={loadingKey} />
       <Header />
-      <div className="flex-1 flex items-center justify-center px-6">
+      <div className="flex-1 flex items-center justify-center px-6 pb-20 md:pb-0 md:pl-[72px]">
         <div className="max-w-lg text-center space-y-8 animate-fade-in py-20">
           <h1 className="font-display text-8xl md:text-9xl text-[#C6A969] font-medium tracking-tight">
             404

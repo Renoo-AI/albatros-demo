@@ -1385,19 +1385,35 @@ async function startServer() {
   });
 
   app.post("/api/admin/settings", async (req, res) => {
-    const updates = req.body;
+    const updates = req.body || {};
+    
+    // Sanitize settings inputs to prevent Stored XSS
+    const sanitizedUpdates: Record<string, any> = {};
+    for (const [k, v] of Object.entries(updates)) {
+      const safeKey = xss(String(k));
+      if (typeof v === "string") {
+        sanitizedUpdates[safeKey] = xss(v);
+      } else if (typeof v === "number" || typeof v === "boolean") {
+        sanitizedUpdates[safeKey] = v;
+      } else if (v === null) {
+        sanitizedUpdates[safeKey] = null;
+      } else {
+        sanitizedUpdates[safeKey] = xss(JSON.stringify(v));
+      }
+    }
+
     const supabase = getSupabaseAdmin() || getSupabase();
 
     if (supabase) {
       const { data: currentSettings, error: selectError } = await supabase.from("business_settings").select("id").limit(1);
       if (!selectError && currentSettings && currentSettings.length > 0) {
-        const { error: updateError } = await supabase.from("business_settings").update(updates).eq("id", currentSettings[0].id);
+        const { error: updateError } = await supabase.from("business_settings").update(sanitizedUpdates).eq("id", currentSettings[0].id);
         if (updateError) {
           console.error("Supabase settings update error:", updateError);
           return res.status(500).json({ error: "Database update failed" });
         }
       } else {
-        const { error: insertError } = await supabase.from("business_settings").insert(updates);
+        const { error: insertError } = await supabase.from("business_settings").insert(sanitizedUpdates);
         if (insertError) {
           console.error("Supabase settings insert error:", insertError);
           return res.status(500).json({ error: "Database insert failed" });
@@ -1406,7 +1422,7 @@ async function startServer() {
     } else {
       await fileMutex.runExclusive(async () => {
         const currentLocal = await readLocalSettings();
-        const merged = { ...currentLocal, ...updates };
+        const merged = { ...currentLocal, ...sanitizedUpdates };
         await writeLocalSettings(merged);
       });
     }

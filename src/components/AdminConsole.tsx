@@ -161,11 +161,101 @@ export function AdminConsole() {
             });
     };
 
+    const [realTime, setRealTime] = useState(true);
+
+    const playChime = () => {
+        try {
+            const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const playTone = (freq: number, start: number, duration: number) => {
+                const osc = context.createOscillator();
+                const gain = context.createGain();
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(freq, start);
+                gain.gain.setValueAtTime(0.15, start);
+                gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+                osc.connect(gain);
+                gain.connect(context.destination);
+                osc.start(start);
+                osc.stop(start + duration);
+            };
+            const now = context.currentTime;
+            playTone(523.25, now, 0.25); // C5
+            playTone(659.25, now + 0.1, 0.35); // E5
+        } catch (e) {
+            console.error("Chime error:", e);
+        }
+    };
+
     useEffect(() => {
         if (authorized) {
             loadData();
         }
     }, [authorized]);
+
+    useEffect(() => {
+        if (!authorized || !realTime) return;
+
+        const interval = setInterval(() => {
+            Promise.all([fetchAdminBookings(), fetchAdminBlocked()])
+                .then(([bData, blData]) => {
+                    const freshBookings = bData || [];
+                    
+                    setBookings((prevBookings) => {
+                        const oldIds = new Set(prevBookings.map((b) => b.id));
+                        const brandNew = freshBookings.filter((b) => !oldIds.has(b.id));
+
+                        if (brandNew.length > 0) {
+                            playChime();
+                            brandNew.forEach((fb) => {
+                                toast((t) => (
+                                    <div className="flex flex-col gap-2 p-1 text-left min-w-[280px]">
+                                        <div className="flex items-center gap-2 text-emerald-400 font-display font-medium text-sm">
+                                            <i className="fa-solid fa-bell text-xs animate-bounce"></i>
+                                            Nouvelle Réservation !
+                                        </div>
+                                        <div className="text-xs text-zinc-300 font-sans">
+                                            <strong className="text-white">{fb.firstName} {fb.lastName}</strong> a réservé le {fb.date} pour un(e) {fb.eventType || "Événement"}.
+                                        </div>
+                                        <div className="flex justify-between items-center pt-2 border-t border-white/5">
+                                            <button 
+                                                onClick={() => { setActiveBookingId(fb.id); toast.dismiss(t.id); }}
+                                                className="px-2 py-1 bg-[#C6A969] hover:bg-[#B59858] text-zinc-950 text-[10px] font-bold uppercase tracking-wider rounded-none cursor-pointer border-0"
+                                            >
+                                                Voir
+                                            </button>
+                                            <button 
+                                                onClick={() => toast.dismiss(t.id)}
+                                                className="px-2 py-1 bg-white/5 hover:bg-white/10 text-zinc-400 text-[10px] font-bold uppercase tracking-wider rounded-none cursor-pointer border-0"
+                                            >
+                                                Fermer
+                                            </button>
+                                        </div>
+                                    </div>
+                                ), {
+                                    duration: 15000,
+                                    position: "top-right",
+                                    style: {
+                                        background: "#121214",
+                                        color: "#fff",
+                                        border: "1px solid rgba(198,169,105,0.2)",
+                                        borderRadius: "0px",
+                                        padding: "12px",
+                                    }
+                                });
+                            });
+                        }
+                        return freshBookings;
+                    });
+                    
+                    setBlockedDates(blData || []);
+                })
+                .catch((err) => {
+                    console.error("Silent polling error:", err);
+                });
+        }, 8000); // check every 8s
+
+        return () => clearInterval(interval);
+    }, [authorized, realTime]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -677,6 +767,7 @@ export function AdminConsole() {
 
     return (
         <div className={`min-h-screen flex flex-col lg:flex-row font-sans antialiased bg-zinc-50 dark:bg-[#09090B] text-zinc-900 dark:text-zinc-100 ${theme}`} dir="ltr">
+            <Toaster position="top-right" toastOptions={{ className: 'dark:bg-zinc-900 dark:text-white rounded-none border border-[#C6A969]/20' }} />
             {/* Grain overlay */}
             
             {/* DESKTOP SIDEBAR */}
@@ -756,7 +847,26 @@ export function AdminConsole() {
                             </p>
                         </div>
 
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 items-center">
+                            {(activeTab === "dashboard" || activeTab === "bookings") && (
+                                <button 
+                                    type="button"
+                                    onClick={() => setRealTime(!realTime)}
+                                    className={`px-3 py-2 font-sans text-xs font-bold uppercase tracking-wider border transition-all rounded-none cursor-pointer flex items-center gap-2 ${
+                                        realTime 
+                                            ? "bg-emerald-950/20 border-emerald-500/30 text-emerald-400" 
+                                            : "bg-white/[0.02] border-black/10 dark:border-white/[0.06] text-zinc-500 hover:text-zinc-300"
+                                    }`}
+                                    title={realTime ? "Désactiver la mise à jour en temps réel" : "Activer la mise à jour en temps réel"}
+                                >
+                                    <span className={`relative flex h-2 w-2 ${realTime ? "" : "hidden"}`}>
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                    </span>
+                                    {!realTime && <i className="fa-solid fa-circle text-[8px] text-zinc-600"></i>}
+                                    {realTime ? "Temps Réel" : "Manuel"}
+                                </button>
+                            )}
                             {activeTab === "dashboard" && (
                                 <>
                                     <button onClick={() => setShowManualModal(true)}

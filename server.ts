@@ -912,7 +912,7 @@ async function startServer() {
 
       if (error || !data) {
         if (username === 'admin' && password === 'albatros2026') {
-          const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: '1d' });
+          const token = jwt.sign({ username, role: 'superadmin' }, JWT_SECRET, { expiresIn: '1d' });
           return res.json({ token });
         }
         return res.status(401).json({ error: "Identifiants invalides." });
@@ -922,13 +922,14 @@ async function startServer() {
       const isValid = await bcrypt.compare(password, data.password_hash);
       if (!isValid) {
         if (username === 'admin' && password === 'albatros2026') {
-          const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: '1d' });
+          const token = jwt.sign({ username, role: 'superadmin' }, JWT_SECRET, { expiresIn: '1d' });
           return res.json({ token });
         }
         return res.status(401).json({ error: "Identifiants invalides." });
       }
 
-      const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: '1d' });
+      const role = data?.role || (username === 'admin' ? 'superadmin' : 'admin');
+      const token = jwt.sign({ username, role }, JWT_SECRET, { expiresIn: '1d' });
       await supabase.from("admins").update({ last_login: new Date().toISOString() }).eq("id", data.id);
       return res.json({ token });
     } else {
@@ -937,11 +938,12 @@ async function startServer() {
       const LOCAL_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
       
       if (LOCAL_ADMIN_USER && LOCAL_ADMIN_PASSWORD && username === LOCAL_ADMIN_USER && password === LOCAL_ADMIN_PASSWORD) {
-        const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: '1d' });
+        const role = username === 'admin' ? 'superadmin' : 'admin';
+        const token = jwt.sign({ username, role }, JWT_SECRET, { expiresIn: '1d' });
         return res.json({ token });
       }
       if (username === 'admin' && password === 'albatros2026') {
-        const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: '1d' });
+        const token = jwt.sign({ username, role: 'superadmin' }, JWT_SECRET, { expiresIn: '1d' });
         return res.json({ token });
       }
       return res.status(401).json({ error: "Identifiants invalides." });
@@ -956,7 +958,8 @@ async function startServer() {
     }
 
     try {
-      jwt.verify(token, JWT_SECRET);
+      const decoded = jwt.verify(token, JWT_SECRET);
+      (req as any).user = decoded;
       next();
     } catch (err) {
       return res.status(401).json({ error: "Unauthorized. Token invalid or expired." });
@@ -1415,14 +1418,26 @@ async function startServer() {
   });
 
   app.post("/api/admin/clear-db", (req, res) => {
+    const user = (req as any).user;
+    if (user?.role !== 'superadmin') {
+      return res.status(403).json({ error: "Insufficient permissions" });
+    }
     return res.status(403).json({ error: "Action disabled in production." });
   });
 
   app.post("/api/admin/restore-seed", (req, res) => {
+    const user = (req as any).user;
+    if (user?.role !== 'superadmin') {
+      return res.status(403).json({ error: "Insufficient permissions" });
+    }
     return res.status(403).json({ error: "Action disabled in production." });
   });
 
   app.post("/api/admin/execute-sql", async (req, res) => {
+    const user = (req as any).user;
+    if (user?.role !== 'superadmin') {
+      return res.status(403).json({ error: "Insufficient permissions" });
+    }
     return res.status(403).json({ error: "Access denied. Manual SQL execution disabled for security." });
   });
 

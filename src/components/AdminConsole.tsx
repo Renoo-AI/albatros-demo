@@ -21,14 +21,16 @@ import {
     createBooking
 } from "../lib/api";
 
-const statusColors: Record<BookingStatus, string> = {
+const statusColors: Record<BookingStatus | string, string> = {
     pending: "text-amber-700 bg-amber-50 border border-amber-200/60 dark:text-amber-400 dark:bg-amber-500/10 dark:border-amber-500/20",
+    pending_payment: "text-blue-700 bg-blue-50 border border-blue-200/60 dark:text-blue-400 dark:bg-blue-500/10 dark:border-blue-500/20",
     confirmed: "text-emerald-700 bg-emerald-50 border border-emerald-200/60 dark:text-emerald-400 dark:bg-emerald-500/10 dark:border-emerald-500/20",
     cancelled: "text-zinc-650 bg-zinc-50 border border-zinc-200/60 dark:text-zinc-400 dark:bg-zinc-900/50 dark:border-zinc-800/60",
 };
 
-const statusLabels: Record<BookingStatus, string> = {
+const statusLabels: Record<BookingStatus | string, string> = {
     pending: "En attente",
+    pending_payment: "En attente de paiement",
     confirmed: "Confirmé",
     cancelled: "Annulé",
 };
@@ -1511,9 +1513,9 @@ export function AdminConsole() {
                                         <>
                                             <button type="button" onClick={() => startEditing(activeBooking)}
                                                 className="px-4 py-2 border border-black/10 dark:border-white/10 hover:bg-white/[0.04] text-zinc-300 font-sans text-sm font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors bg-zinc-900">Modifier</button>
-                                            {activeBooking.status === "pending" && (
+                                            {(activeBooking.status === "pending" || activeBooking.status === "pending_payment") && (
                                                 <button type="button" onClick={() => handleStatusChange(activeBooking.id, "confirmed")}
-                                                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-zinc-900 dark:text-white font-sans text-sm font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors">Confirmer</button>
+                                                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-zinc-900 dark:text-white font-sans text-sm font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors">Payé</button>
                                             )}
                                             {activeBooking.status === "confirmed" && (
                                                 <button type="button" onClick={() => { setRefundTargetId(activeBooking.id); setShowRefundModal(true); }}

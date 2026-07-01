@@ -19,30 +19,30 @@ const translations: Record<Language, Record<string, string>> = {
     "nav.book": "Réserver",
     
     // Hero
-    "hero.title": "Célébrez vos plus beaux moments avec nous.",
-    "hero.subtitle": "La salle des fêtes idéale pour vos mariages et réceptions à Manouba.",
+    "hero.title": "L'art de célébrer les moments qui comptent.",
+    "hero.subtitle": "Salle des fêtes et service traiteur d'exception à Manouba.",
     "hero.cta_book": "Réserver une date",
     "hero.cta_discover": "Découvrir le lieu",
     
     // CtaBanner
-    "cta.title": "Vous avez une date en tête ?",
-    "cta.text": "Vérifiez nos disponibilités et réservez votre soirée en quelques clics.",
+    "cta.title": "Prêt à créer des souvenirs inoubliables ?",
+    "cta.text": "Réservez votre date dès maintenant et laissez-nous transformer votre vision en une célébration extraordinaire.",
     
     // Welcome
-    "welcome.title": "Bienvenue à la salle Albatros",
-    "welcome.text": "Située à Manouba, notre salle est l'espace parfait pour vos événements. Que ce soit pour un mariage, des fiançailles ou une grande réception, notre équipe s'occupe de tout pour vous offrir une fête réussie et sans stress.",
+    "welcome.title": "Le prestige d'une célébration réussie",
+    "welcome.text": "Situé à Manouba, Albatros est le lieu d'exception pour tous vos événements marquants. Que ce soit pour un mariage féerique, des fiançailles mémorables ou une réception de haut standing, notre salle raffinée et notre équipe dévouée mettent tout en œuvre pour faire de votre célébration un moment inoubliable et magique.",
     
     // Lounge
-    "lounge.title": "Espace Lounge & Service Traiteur",
-    "lounge.text": "Nous vous proposons un service traiteur complet et un espace lounge cosy pour accueillir vos invités confortablement. Au menu : des buffets gourmands et de délicieuses pâtisseries tunisiennes préparées avec soin.",
+    "lounge.title": "Le Lounge et l'Espace Traiteur",
+    "lounge.text": "Pour accompagner vos festivités, Albatros met à votre disposition un service traiteur d'exception et un espace lounge raffiné pour accueillir vos invités d'honneur dans les meilleures conditions. Nos équipes élaborent des buffets prestigieux et des pâtisseries fines traditionnelles et modernes.",
     "lounge.buffets_title": "Buffets et Dîners",
     "lounge.buffets_text": "Conception de menus sur mesure allant des amuse-bouches délicats aux repas gastronomiques complets.",
     "lounge.pastry_title": "Pâtisserie Fine",
     "lounge.pastry_text": "Une sélection de douceurs tunisiennes traditionnelles et créations contemporaines faites maison.",
     
     // Salle
-    "salle.title": "Une salle aménagée pour vous",
-    "salle.text": "Notre salle est entièrement équipée pour accueillir vos convives dans les meilleures conditions. Avec un grand espace ouvert, une décoration soignée et tout le matériel nécessaire, elle s'adapte parfaitement à vos besoins.",
+    "salle.title": "Un espace pensé pour les grandes réceptions",
+    "salle.text": "La salle des fêtes Albatros est l'écrin idéal pour vos mariages, fiançailles, anniversaires et événements professionnels. Avec une capacité d'accueil généreuse et une décoration élégante, nous donnons vie à vos rêves les plus ambitieux.",
     "salle.stat_guests_num": "400",
     "salle.stat_guests_label": "Capacité d'invités maximum",
     "salle.stat_years_num": "15+",

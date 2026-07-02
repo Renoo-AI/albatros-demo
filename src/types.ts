@@ -61,4 +61,5 @@ export interface BusinessSettings {
   working_days: number[];
   open_time: string;
   close_time: string;
+  event_prices?: Record<string, number>;
 }

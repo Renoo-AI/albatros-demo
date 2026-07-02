@@ -62,12 +62,13 @@ CREATE TABLE IF NOT EXISTS public.business_settings (
     working_days JSONB DEFAULT '[4, 5, 6]',
     open_time VARCHAR(10) DEFAULT '11:00',
     close_time VARCHAR(10) DEFAULT '03:00',
+    event_prices JSONB DEFAULT '{"Mariage": 4000, "Soirée": 2500, "Entreprise": 2000, "Anniversaire": 1500, "Autre": 1500}',
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc', now())
 );
 
 -- Seed Initial Settings
-INSERT INTO public.business_settings (business_name, business_email, business_phone, currency, min_guests, max_guests)
-VALUES ('Salle Des Fêtes Albatros', 'albatros.manouba@gmail.com', '+216 98 687 124', 'TND', 50, 400)
+INSERT INTO public.business_settings (business_name, business_email, business_phone, currency, min_guests, max_guests, event_prices)
+VALUES ('Salle Des Fêtes Albatros', 'albatros.manouba@gmail.com', '+216 98 687 124', 'TND', 50, 400, '{"Mariage": 4000, "Soirée": 2500, "Entreprise": 2000, "Anniversaire": 1500, "Autre": 1500}')
 ON CONFLICT DO NOTHING;
 
 -- Row Level Security (RLS) Policies

@@ -153,7 +153,14 @@ const DEFAULT_SETTINGS = {
   deposit_percent: 30,
   working_days: [4, 5, 6],
   open_time: "11:00",
-  close_time: "03:00"
+  close_time: "03:00",
+  event_prices: {
+    "Mariage": 4000,
+    "Soirée": 2500,
+    "Entreprise": 2000,
+    "Anniversaire": 1500,
+    "Autre": 1500
+  }
 };
 
 async function readLocalSettings(): Promise<any> {
@@ -637,7 +644,17 @@ async function startServer() {
       return res.status(400).json({ error: "Invalid date: You cannot book a date in the past." });
     }
 
-    const eventPrices: Record<string, number> = {
+    let dbSettings = null;
+    const supabaseSettings = getSupabase();
+    if (supabaseSettings) {
+      const { data } = await supabaseSettings.from("business_settings").select("*").single();
+      dbSettings = data;
+    }
+    if (!dbSettings) {
+      dbSettings = await readLocalSettings();
+    }
+
+    const eventPrices = dbSettings?.event_prices || {
       "Mariage": 4000,
       "Soirée": 2500,
       "Entreprise": 2000,
@@ -645,7 +662,8 @@ async function startServer() {
       "Autre": 1500,
     };
     const calculatedPrice = eventPrices[safeEventType] || 1500;
-    const calculatedDeposit = Math.round(calculatedPrice * 0.30);
+    const depositPercent = dbSettings?.deposit_percent ?? 30;
+    const calculatedDeposit = Math.round(calculatedPrice * (depositPercent / 100));
     const calculatedBalance = calculatedPrice - calculatedDeposit;
 
     const ref = "ALB-" + crypto.randomInt(100000, 999999);
@@ -653,7 +671,11 @@ async function startServer() {
     let gatewayRef = null;
     let initialStatus = "pending";
 
-    if (mock) {
+    if (safePaymentMethod === 'manuel' || safePaymentMethod === 'local') {
+      initialStatus = "pending";
+      gatewayRef = null;
+      paymentUrl = null;
+    } else if (mock) {
       initialStatus = "pending_payment";
       gatewayRef = "mock_" + safePaymentMethod + "_" + crypto.randomInt(1000, 9999);
       paymentUrl = null;
@@ -1323,7 +1345,7 @@ async function startServer() {
     res.json({ success: true });
   });
 
-  // Soft-delete: mark as deleted instead of removing
+  // Soft-delete: mark as deleted instead of removing (set status to cancelled)
   app.post("/api/admin/delete", async (req, res) => {
     const { id } = req.body;
     if (!id) return res.status(400).json({ error: "Missing id" });
@@ -1331,13 +1353,13 @@ async function startServer() {
 
     const supabase = getSupabaseAdmin() || getSupabase();
     if (supabase) {
-      await supabase.from("bookings").update({ deleted_at: new Date().toISOString() }).eq("booking_ref", safeId);
+      await supabase.from("bookings").update({ status: 'cancelled' }).eq("booking_ref", safeId);
     } else {
       await fileMutex.runExclusive(async () => {
         const bookings = await readLocalBookings();
         const match = bookings.find((b) => b.id === safeId);
         if (match) {
-          match.deletedAt = new Date().toISOString();
+          match.status = 'cancelled';
           await writeLocalBookings(bookings);
         }
       });
@@ -1346,7 +1368,7 @@ async function startServer() {
     res.json({ success: true });
   });
 
-  // Restore a soft-deleted booking
+  // Restore a soft-deleted booking (set status to pending)
   app.post("/api/admin/restore", async (req, res) => {
     const { id } = req.body;
     if (!id) return res.status(400).json({ error: "Missing id" });
@@ -1354,13 +1376,13 @@ async function startServer() {
 
     const supabase = getSupabaseAdmin() || getSupabase();
     if (supabase) {
-      await supabase.from("bookings").update({ deleted_at: null }).eq("booking_ref", safeId);
+      await supabase.from("bookings").update({ status: 'pending' }).eq("booking_ref", safeId);
     } else {
       await fileMutex.runExclusive(async () => {
         const bookings = await readLocalBookings();
         const match = bookings.find((b) => b.id === safeId);
         if (match) {
-          delete match.deletedAt;
+          match.status = 'pending';
           await writeLocalBookings(bookings);
         }
       });
@@ -1402,6 +1424,14 @@ async function startServer() {
         sanitizedUpdates[safeKey] = v;
       } else if (v === null) {
         sanitizedUpdates[safeKey] = null;
+      } else if (Array.isArray(v)) {
+        sanitizedUpdates[safeKey] = v.map((item: any) => typeof item === "string" ? xss(item) : item);
+      } else if (typeof v === "object" && v !== null) {
+        try {
+          sanitizedUpdates[safeKey] = JSON.parse(xss(JSON.stringify(v)));
+        } catch {
+          sanitizedUpdates[safeKey] = v;
+        }
       } else {
         sanitizedUpdates[safeKey] = xss(JSON.stringify(v));
       }

@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "motion/react";
 import toast from "react-hot-toast";
 import { useLanguage } from "../context/LanguageContext";
 
-const eventPrices: Record<EventTypeSlug, number> = {
+const defaultEventPrices: Record<EventTypeSlug, number> = {
   "Mariage": 4000,
   "Soirée": 2500,
   "Entreprise": 2000,
@@ -31,10 +31,14 @@ export function BookingWizard() {
   const [availability, setAvailability] = useState<string[]>([]);
   const [loadingAvailability, setLoadingAvailability] = useState(false);
   const [settings, setSettings] = useState<BusinessSettings | null>(null);
+
+  const eventPrices = useMemo(() => {
+    return (settings?.event_prices || defaultEventPrices) as Record<EventTypeSlug, number>;
+  }, [settings]);
   const [isDarkMode, setIsDarkMode] = useState(() => document.documentElement.classList.contains("dark"));
 
   const [config, setConfig] = useState<{ stripe: boolean, flouci: boolean, konnect: boolean } | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'flouci' | 'konnect' | 'd17'>('stripe');
+  const [paymentMethod, setPaymentMethod] = useState<'konnect' | 'manuel'>('konnect');
 
   const [selectedDay, setSelectedDay] = useState("");
   const [selectedMonth, setSelectedMonth] = useState("");
@@ -174,10 +178,7 @@ export function BookingWizard() {
     fetchConfigStatus()
       .then((data) => {
         setConfig(data);
-        if (!data.stripe) {
-          if (data.flouci) setPaymentMethod('flouci');
-          else if (data.konnect) setPaymentMethod('konnect');
-        }
+        setPaymentMethod('konnect');
       })
       .catch((err) => console.error("Error fetching config status:", err));
 
@@ -232,12 +233,16 @@ export function BookingWizard() {
         notes,
         bot_field: botField,
         paymentMethod,
-        mock: true
+        mock: paymentMethod === 'konnect' ? !config?.konnect : false
       };
 
       const res = await createBooking(payload);
       
       setLoadingSubmit(false);
+      if (res.paymentUrl) {
+        window.location.href = res.paymentUrl;
+        return;
+      }
       setBookingResult(res);
       setStep(4);
     } catch (err: any) {
@@ -580,83 +585,79 @@ export function BookingWizard() {
                 <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white block">
                   {t("booking.choose_payment_method")}
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('stripe')}
-                    className={`p-4 border text-center transition-all duration-300 rounded-lg flex flex-col gap-3 items-center cursor-pointer ${
-                      paymentMethod === 'stripe'
-                        ? "border-[#C6A969] bg-[#C6A969]/5 shadow-sm"
-                        : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:border-[#C6A969]/30"
-                    }`}
-                  >
-                    <div className="flex items-center justify-center w-full h-8">
-                      <img src="/media/stripe.png" alt="Stripe" className="h-full object-contain" />
-                    </div>
-                    <span className="text-xs text-zinc-500">{t("booking.stripe_desc")}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('flouci')}
-                    className={`p-4 border text-center transition-all duration-300 rounded-lg flex flex-col gap-3 items-center cursor-pointer ${
-                      paymentMethod === 'flouci'
-                        ? "border-[#C6A969] bg-[#C6A969]/5 shadow-sm"
-                        : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:border-[#C6A969]/30"
-                    }`}
-                  >
-                    <div className="flex items-center justify-center w-full h-8">
-                      <img src="/media/flouci.png" alt="Flouci" className="h-full object-contain" />
-                    </div>
-                    <span className="text-xs text-zinc-500">{t("booking.flouci_desc")}</span>
-                  </button>
-
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('konnect')}
-                    className={`p-4 border text-center transition-all duration-300 rounded-lg flex flex-col gap-3 items-center cursor-pointer ${
+                    className={`p-6 border text-left transition-all duration-300 rounded-none flex flex-col gap-3 cursor-pointer ${
                       paymentMethod === 'konnect'
-                        ? "border-[#C6A969] bg-[#C6A969]/5 shadow-sm"
+                        ? "border-[#C6A969] bg-[#C6A969]/5 shadow-[0_4px_20px_rgba(198,169,105,0.1)]"
                         : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:border-[#C6A969]/30"
                     }`}
                   >
-                    <div className="flex items-center justify-center w-full h-8">
-                      <img src="/media/konnect.png" alt="Konnect" className="h-full object-contain" />
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-none flex items-center justify-center ${paymentMethod === 'konnect' ? 'bg-[#C6A969] text-white' : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-500'}`}>
+                        <i className="fa-solid fa-credit-card text-sm"></i>
+                      </div>
+                      <span className="font-sans font-medium text-sm text-zinc-900 dark:text-white">
+                        {t("booking.payment_online")}
+                      </span>
                     </div>
-                    <span className="text-xs text-zinc-500">{t("booking.konnect_desc")}</span>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                      {t("booking.payment_online_desc")}
+                    </span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => setPaymentMethod('d17')}
-                    className={`p-4 border text-center transition-all duration-300 rounded-lg flex flex-col gap-3 items-center cursor-pointer ${
-                      paymentMethod === 'd17'
-                        ? "border-[#C6A969] bg-[#C6A969]/5 shadow-sm"
+                    onClick={() => setPaymentMethod('manuel')}
+                    className={`p-6 border text-left transition-all duration-300 rounded-none flex flex-col gap-3 cursor-pointer ${
+                      paymentMethod === 'manuel'
+                        ? "border-[#C6A969] bg-[#C6A969]/5 shadow-[0_4px_20px_rgba(198,169,105,0.1)]"
                         : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:border-[#C6A969]/30"
                     }`}
                   >
-                    <div className="flex items-center justify-center w-full h-8">
-                      <img src="/media/d17.png" alt="D17" className="h-full object-contain" />
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-none flex items-center justify-center ${paymentMethod === 'manuel' ? 'bg-[#C6A969] text-white' : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-500'}`}>
+                        <i className="fa-solid fa-hand-holding-dollar text-sm"></i>
+                      </div>
+                      <span className="font-sans font-medium text-sm text-zinc-900 dark:text-white">
+                        {t("booking.payment_onsite")}
+                      </span>
                     </div>
-                    <span className="text-xs text-zinc-500">{t("booking.d17_desc")}</span>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                      {t("booking.payment_onsite_desc")}
+                    </span>
                   </button>
                 </div>
               </div>
 
               <form onSubmit={handlePaymentSubmit} className="space-y-6">
-                  <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-sm font-sans flex items-center gap-3">
-                    <i className="fa-solid fa-circle-info text-[#C6A969] text-base"></i>
-                    <span>Vous allez simuler le paiement pour approuver la réservation.</span>
-                  </div>
+                  {paymentMethod === 'konnect' && (!config?.konnect || !settings) && (
+                    <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-sm font-sans flex items-center gap-3">
+                      <i className="fa-solid fa-circle-info text-[#C6A969] text-base"></i>
+                      <span>Vous allez simuler le paiement en ligne (mode démo/test) pour enregistrer la réservation.</span>
+                    </div>
+                  )}
+                  {paymentMethod === 'manuel' && (
+                    <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-sm font-sans flex items-center gap-3">
+                      <i className="fa-solid fa-circle-info text-[#C6A969] text-base"></i>
+                      <span>La réservation sera enregistrée en attente de paiement (valide 48h). Aucun paiement en ligne requis.</span>
+                    </div>
+                  )}
 
                 <div className="flex justify-between pt-6">
                   <button type="button" onClick={() => setStep(2)} className="btn btn-outline cursor-pointer" disabled={loadingSubmit}>
                     <i className="fa-solid fa-arrow-left mr-2 text-xs"></i>
                     {t("booking.btn_back")}
                   </button>
-                  <button type="submit" className="btn btn-gold cursor-pointer flex items-center gap-2 justify-center min-w-[150px] shine-effect" disabled={loadingSubmit}>
+                  <button type="submit" className="btn btn-gold cursor-pointer flex items-center gap-2 justify-center min-w-[180px] shine-effect" disabled={loadingSubmit}>
                     {loadingSubmit && <i className="fa-solid fa-spinner fa-spin"></i>}
-                    {loadingSubmit ? t("booking.processing") : t("booking.btn_pay", { amount: depositAmount })}
+                    {loadingSubmit 
+                      ? t("booking.processing") 
+                      : paymentMethod === 'manuel'
+                        ? "Confirmer la Réservation"
+                        : t("booking.btn_pay", { amount: depositAmount })}
                   </button>
                 </div>
               </form>
@@ -676,10 +677,12 @@ export function BookingWizard() {
 
               <div className="space-y-3">
                 <h3 className="text-2xl font-display font-medium text-zinc-950 dark:text-white">
-                  {t("booking.success_title")}
+                  {paymentMethod === 'manuel' ? "Réservation Enregistrée" : t("booking.success_title")}
                 </h3>
-                <p className="text-zinc-600 dark:text-zinc-400 font-sans text-sm max-w-sm mx-auto">
-                  {t("booking.success_text")}
+                <p className="text-zinc-600 dark:text-zinc-400 font-sans text-sm max-w-lg mx-auto leading-relaxed">
+                  {paymentMethod === 'manuel'
+                    ? t("booking.success_text_manuel")
+                    : t("booking.success_text")}
                 </p>
               </div>
 

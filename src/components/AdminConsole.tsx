@@ -43,7 +43,7 @@ const eventLabels: Record<EventTypeSlug, string> = {
     "Autre": "Autre Réception",
 };
 
-const eventPrices: Record<EventTypeSlug, number> = {
+const defaultEventPrices: Record<EventTypeSlug, number> = {
     "Mariage": 4000,
     "Soirée": 2500,
     "Entreprise": 2000,
@@ -139,9 +139,22 @@ export function AdminConsole() {
     }, []);
 
     // Always dark mode — matches home page design
-    // Active (non-deleted) bookings
-    const activeBookings = useMemo(() => bookings.filter((b) => !b.deletedAt), [bookings]);
-    const trashedBookings = useMemo(() => bookings.filter((b) => b.deletedAt), [bookings]);
+    const eventPrices = useMemo(() => {
+        return (settings?.event_prices || defaultEventPrices) as Record<EventTypeSlug, number>;
+    }, [settings]);
+
+    const isAnyModalActive = 
+        showRefundModal || 
+        showDeleteConfirm || 
+        showPermanentDeleteConfirm || 
+        showRestoreConfirm || 
+        activeBookingId !== null || 
+        showManualModal || 
+        selectedBlockDate !== null;
+
+    // Active (non-cancelled) bookings
+    const activeBookings = useMemo(() => bookings.filter((b) => b.status !== "cancelled"), [bookings]);
+    const trashedBookings = useMemo(() => bookings.filter((b) => b.status === "cancelled"), [bookings]);
 
     // Fetch admin stats and data when authorized
     const loadData = () => {
@@ -187,17 +200,38 @@ export function AdminConsole() {
     };
 
     useEffect(() => {
+        let active = true;
         if (authorized) {
-            loadData();
+            Promise.all([fetchAdminBookings(), fetchAdminBlocked(), fetchSettings()])
+                .then(([bData, blData, sett]) => {
+                    if (!active) return;
+                    setBookings(bData || []);
+                    setBlockedDates(blData || []);
+                    setSettings(sett || null);
+                    setSettingsForm(sett || null);
+                })
+                .catch((err) => {
+                    if (!active) return;
+                    console.error("Admin load error:", err);
+                    if (err.message.includes("401") || err.message.includes("Unauthorized")) {
+                        setAuthError("Session expirée");
+                        handleLogout();
+                    }
+                });
         }
+        return () => {
+            active = false;
+        };
     }, [authorized]);
 
     useEffect(() => {
-        if (!authorized || !realTime) return;
+        if (!authorized || !realTime || isAnyModalActive) return;
 
+        let active = true;
         const interval = setInterval(() => {
             Promise.all([fetchAdminBookings(), fetchAdminBlocked()])
                 .then(([bData, blData]) => {
+                    if (!active) return;
                     const freshBookings = bData || [];
                     
                     setBookings((prevBookings) => {
@@ -250,12 +284,16 @@ export function AdminConsole() {
                     setBlockedDates(blData || []);
                 })
                 .catch((err) => {
+                    if (!active) return;
                     console.error("Silent polling error:", err);
                 });
         }, 8000); // check every 8s
 
-        return () => clearInterval(interval);
-    }, [authorized, realTime]);
+        return () => {
+            active = false;
+            clearInterval(interval);
+        };
+    }, [authorized, realTime, isAnyModalActive]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -1408,6 +1446,40 @@ export function AdminConsole() {
                                         onChange={(e) => setSettingsForm({ ...settingsForm, google_maps_url: e.target.value })}
                                         className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-[#0A0A0C] border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-850 dark:text-white focus:outline-none focus:border-[#C6A969] transition-all rounded-none"
                                     />
+                                </div>
+                            </div>
+
+                            <div className="pt-6 border-t border-zinc-200/80 dark:border-zinc-800/80 space-y-4 text-left">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-1.5 h-4 bg-[#C6A969] rounded-none" />
+                                    <h4 className="font-display text-sm font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">
+                                        Tarifs des Événements (TND)
+                                    </h4>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {(["Mariage", "Soirée", "Entreprise", "Anniversaire", "Autre"] as EventTypeSlug[]).map((slug) => {
+                                        const currentPrices = settingsForm.event_prices || defaultEventPrices;
+                                        const priceVal = currentPrices[slug] !== undefined ? currentPrices[slug] : defaultEventPrices[slug];
+                                        return (
+                                            <div key={slug} className="flex flex-col">
+                                                <label className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2">
+                                                    {slug === "Entreprise" ? "Entreprise / Pro" : slug}
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    required
+                                                    min="0"
+                                                    value={priceVal}
+                                                    onChange={(e) => {
+                                                        const val = parseInt(e.target.value) || 0;
+                                                        const newPrices = { ...currentPrices, [slug]: val };
+                                                        setSettingsForm({ ...settingsForm, event_prices: newPrices });
+                                                    }}
+                                                    className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-[#0A0A0C] border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-850 dark:text-white focus:outline-none focus:border-[#C6A969] transition-all rounded-none"
+                                                />
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
 

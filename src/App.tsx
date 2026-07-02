@@ -134,6 +134,7 @@ export default function App() {
 
     return () => {
       window.removeEventListener("popstate", handleLocationChange);
+      window.history.pushState = originalPush;
     };
   }, []);
 

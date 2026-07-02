@@ -582,67 +582,29 @@ export function BookingWizard() {
               </div>
 
               <div className="space-y-4">
-                <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white block">
-                  {t("booking.choose_payment_method")}
+                <label className="font-sans text-sm font-medium text-[#C6A969] uppercase tracking-wider block">
+                  Mode de Paiement Sécurisé
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('konnect')}
-                    className={`p-6 border text-left transition-all duration-300 rounded-none flex flex-col gap-3 cursor-pointer ${
-                      paymentMethod === 'konnect'
-                        ? "border-[#C6A969] bg-[#C6A969]/5 shadow-[0_4px_20px_rgba(198,169,105,0.1)]"
-                        : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:border-[#C6A969]/30"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-none flex items-center justify-center ${paymentMethod === 'konnect' ? 'bg-[#C6A969] text-white' : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-500'}`}>
-                        <i className="fa-solid fa-credit-card text-sm"></i>
-                      </div>
-                      <span className="font-sans font-medium text-sm text-zinc-900 dark:text-white">
-                        {t("booking.payment_online")}
-                      </span>
+                <div className="p-6 border border-[#C6A969]/20 bg-[#C6A969]/5 flex flex-col gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-[#C6A969] text-white rounded-none flex items-center justify-center">
+                      <i className="fa-solid fa-credit-card text-sm"></i>
                     </div>
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                      {t("booking.payment_online_desc")}
+                    <span className="font-sans font-medium text-sm text-zinc-900 dark:text-white">
+                      {t("booking.payment_online")}
                     </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('manuel')}
-                    className={`p-6 border text-left transition-all duration-300 rounded-none flex flex-col gap-3 cursor-pointer ${
-                      paymentMethod === 'manuel'
-                        ? "border-[#C6A969] bg-[#C6A969]/5 shadow-[0_4px_20px_rgba(198,169,105,0.1)]"
-                        : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:border-[#C6A969]/30"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-none flex items-center justify-center ${paymentMethod === 'manuel' ? 'bg-[#C6A969] text-white' : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-500'}`}>
-                        <i className="fa-solid fa-hand-holding-dollar text-sm"></i>
-                      </div>
-                      <span className="font-sans font-medium text-sm text-zinc-900 dark:text-white">
-                        {t("booking.payment_onsite")}
-                      </span>
-                    </div>
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                      {t("booking.payment_onsite_desc")}
-                    </span>
-                  </button>
+                  </div>
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                    {t("booking.payment_online_desc")}
+                  </span>
                 </div>
               </div>
 
               <form onSubmit={handlePaymentSubmit} className="space-y-6">
-                  {paymentMethod === 'konnect' && (!config?.konnect || !settings) && (
+                  {(!config?.konnect || !settings) && (
                     <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-sm font-sans flex items-center gap-3">
                       <i className="fa-solid fa-circle-info text-[#C6A969] text-base"></i>
                       <span>Vous allez simuler le paiement en ligne (mode démo/test) pour enregistrer la réservation.</span>
-                    </div>
-                  )}
-                  {paymentMethod === 'manuel' && (
-                    <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-sm font-sans flex items-center gap-3">
-                      <i className="fa-solid fa-circle-info text-[#C6A969] text-base"></i>
-                      <span>La réservation sera enregistrée en attente de paiement (valide 48h). Aucun paiement en ligne requis.</span>
                     </div>
                   )}
 
@@ -655,9 +617,7 @@ export function BookingWizard() {
                     {loadingSubmit && <i className="fa-solid fa-spinner fa-spin"></i>}
                     {loadingSubmit 
                       ? t("booking.processing") 
-                      : paymentMethod === 'manuel'
-                        ? "Confirmer la Réservation"
-                        : t("booking.btn_pay", { amount: depositAmount })}
+                      : t("booking.btn_pay", { amount: depositAmount })}
                   </button>
                 </div>
               </form>

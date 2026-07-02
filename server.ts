@@ -1189,12 +1189,18 @@ async function startServer() {
 
     const supabase = getSupabaseAdmin() || getSupabase();
     if (supabase) {
-      await supabase.from("blocked_dates").insert({ blocked_date: safeDate, reason: safeReason });
+      const { error } = await supabase.from("blocked_dates").insert({ blocked_date: safeDate, reason: safeReason });
+      if (error && error.code !== '23505') { // 23505 is unique violation in Postgres
+        console.error("Supabase block-date error:", error);
+        return res.status(500).json({ error: error.message });
+      }
     } else {
       await fileMutex.runExclusive(async () => {
         const blocked = await readLocalBlocked();
-        blocked.push({ date: safeDate, reason: safeReason });
-        await writeLocalBlocked(blocked);
+        if (!blocked.some((b) => b.date === safeDate)) {
+          blocked.push({ date: safeDate, reason: safeReason });
+          await writeLocalBlocked(blocked);
+        }
       });
     }
 

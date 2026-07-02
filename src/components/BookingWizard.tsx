@@ -590,24 +590,19 @@ export function BookingWizard() {
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('konnect')}
-                    className={`p-6 border text-left transition-all duration-300 rounded-none flex flex-col gap-3 cursor-pointer ${
+                    className={`p-6 border text-left transition-all duration-300 rounded-none flex flex-col gap-4 cursor-pointer ${
                       paymentMethod === 'konnect'
                         ? "border-[#C6A969] bg-[#C6A969]/5 shadow-[0_4px_20px_rgba(198,169,105,0.1)]"
                         : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:border-[#C6A969]/30"
                     }`}
                   >
-                    <div className="flex justify-between items-center w-full">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-none flex items-center justify-center ${paymentMethod === 'konnect' ? 'bg-[#C6A969] text-white' : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-500'}`}>
-                          <i className="fa-solid fa-credit-card text-sm"></i>
-                        </div>
-                        <span className="font-sans font-medium text-sm text-zinc-900 dark:text-white">
-                          Konnect
-                        </span>
-                      </div>
-                      <img src="/media/konnect.png" alt="Konnect" className="h-6 object-contain" />
+                    <div className="flex items-center gap-3">
+                      <img src="/media/konnect.png" alt="Konnect" className="h-7 object-contain" />
+                      <span className="font-sans font-medium text-sm text-zinc-900 dark:text-white">
+                        Konnect
+                      </span>
                     </div>
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed block">
                       Acompte par carte bancaire (locales/internationales) ou postale (e-DINAR)
                     </span>
                   </button>
@@ -616,24 +611,16 @@ export function BookingWizard() {
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('flouci')}
-                    className={`p-6 border text-left transition-all duration-300 rounded-none flex flex-col gap-3 cursor-pointer ${
+                    className={`p-6 border text-left transition-all duration-300 rounded-none flex flex-col gap-4 cursor-pointer ${
                       paymentMethod === 'flouci'
                         ? "border-[#C6A969] bg-[#C6A969]/5 shadow-[0_4px_20px_rgba(198,169,105,0.1)]"
                         : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:border-[#C6A969]/30"
                     }`}
                   >
-                    <div className="flex justify-between items-center w-full">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-none flex items-center justify-center ${paymentMethod === 'flouci' ? 'bg-[#C6A969] text-white' : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-500'}`}>
-                          <i className="fa-solid fa-wallet text-sm"></i>
-                        </div>
-                        <span className="font-sans font-medium text-sm text-zinc-900 dark:text-white">
-                          Flouci
-                        </span>
-                      </div>
-                      <img src="/media/flouci.png" alt="Flouci" className="h-6 object-contain" />
+                    <div className="flex items-center">
+                      <img src="/media/flouci.png" alt="Flouci" className="h-7 object-contain" />
                     </div>
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed block">
                       Acompte par portefeuille électronique ou Wallets locaux
                     </span>
                   </button>

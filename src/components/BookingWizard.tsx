@@ -38,7 +38,7 @@ export function BookingWizard() {
   const [isDarkMode, setIsDarkMode] = useState(() => document.documentElement.classList.contains("dark"));
 
   const [config, setConfig] = useState<{ stripe: boolean, flouci: boolean, konnect: boolean } | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'konnect' | 'manuel'>('konnect');
+  const [paymentMethod, setPaymentMethod] = useState<'konnect' | 'flouci'>('konnect');
 
   const [selectedDay, setSelectedDay] = useState("");
   const [selectedMonth, setSelectedMonth] = useState("");
@@ -233,7 +233,7 @@ export function BookingWizard() {
         notes,
         bot_field: botField,
         paymentMethod,
-        mock: paymentMethod === 'konnect' ? !config?.konnect : false
+        mock: paymentMethod === 'konnect' ? !config?.konnect : (paymentMethod === 'flouci' ? !config?.flouci : false)
       };
 
       const res = await createBooking(payload);
@@ -582,29 +582,75 @@ export function BookingWizard() {
               </div>
 
               <div className="space-y-4">
-                <label className="font-sans text-sm font-medium text-[#C6A969] uppercase tracking-wider block">
-                  Mode de Paiement Sécurisé
+                <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white block">
+                  {t("booking.choose_payment_method") || "Choisir un moyen de paiement en ligne"}
                 </label>
-                <div className="p-6 border border-[#C6A969]/20 bg-[#C6A969]/5 flex flex-col gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-[#C6A969] text-white rounded-none flex items-center justify-center">
-                      <i className="fa-solid fa-credit-card text-sm"></i>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  {/* Option 1 (Konnect) */}
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('konnect')}
+                    className={`p-6 border text-left transition-all duration-300 rounded-none flex flex-col gap-3 cursor-pointer ${
+                      paymentMethod === 'konnect'
+                        ? "border-[#C6A969] bg-[#C6A969]/5 shadow-[0_4px_20px_rgba(198,169,105,0.1)]"
+                        : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:border-[#C6A969]/30"
+                    }`}
+                  >
+                    <div className="flex justify-between items-center w-full">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-none flex items-center justify-center ${paymentMethod === 'konnect' ? 'bg-[#C6A969] text-white' : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-500'}`}>
+                          <i className="fa-solid fa-credit-card text-sm"></i>
+                        </div>
+                        <span className="font-sans font-medium text-sm text-zinc-900 dark:text-white">
+                          Konnect
+                        </span>
+                      </div>
+                      <img src="/media/konnect.png" alt="Konnect" className="h-6 object-contain" />
                     </div>
-                    <span className="font-sans font-medium text-sm text-zinc-900 dark:text-white">
-                      {t("booking.payment_online")}
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                      Acompte par carte bancaire (locales/internationales) ou postale (e-DINAR)
                     </span>
-                  </div>
-                  <span className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                    {t("booking.payment_online_desc")}
-                  </span>
+                  </button>
+
+                  {/* Option 2 (Flouci) */}
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('flouci')}
+                    className={`p-6 border text-left transition-all duration-300 rounded-none flex flex-col gap-3 cursor-pointer ${
+                      paymentMethod === 'flouci'
+                        ? "border-[#C6A969] bg-[#C6A969]/5 shadow-[0_4px_20px_rgba(198,169,105,0.1)]"
+                        : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:border-[#C6A969]/30"
+                    }`}
+                  >
+                    <div className="flex justify-between items-center w-full">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-none flex items-center justify-center ${paymentMethod === 'flouci' ? 'bg-[#C6A969] text-white' : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-500'}`}>
+                          <i className="fa-solid fa-wallet text-sm"></i>
+                        </div>
+                        <span className="font-sans font-medium text-sm text-zinc-900 dark:text-white">
+                          Flouci
+                        </span>
+                      </div>
+                      <img src="/media/flouci.png" alt="Flouci" className="h-6 object-contain" />
+                    </div>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                      Acompte par portefeuille électronique ou Wallets locaux
+                    </span>
+                  </button>
                 </div>
               </div>
 
               <form onSubmit={handlePaymentSubmit} className="space-y-6">
-                  {(!config?.konnect || !settings) && (
+                  {paymentMethod === 'konnect' && (!config?.konnect || !settings) && (
                     <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-sm font-sans flex items-center gap-3">
                       <i className="fa-solid fa-circle-info text-[#C6A969] text-base"></i>
-                      <span>Vous allez simuler le paiement en ligne (mode démo/test) pour enregistrer la réservation.</span>
+                      <span>Vous allez simuler le paiement en ligne (mode démo/test Konnect) pour enregistrer la réservation.</span>
+                    </div>
+                  )}
+                  {paymentMethod === 'flouci' && (!config?.flouci || !settings) && (
+                    <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-sm font-sans flex items-center gap-3">
+                      <i className="fa-solid fa-circle-info text-[#C6A969] text-base"></i>
+                      <span>Vous allez simuler le paiement en ligne (mode démo/test Flouci) pour enregistrer la réservation.</span>
                     </div>
                   )}
 

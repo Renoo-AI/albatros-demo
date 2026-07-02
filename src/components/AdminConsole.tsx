@@ -22,10 +22,10 @@ import {
 } from "../lib/api";
 
 const statusColors: Record<BookingStatus | string, string> = {
-    pending: "text-amber-700 bg-amber-50 border border-amber-200/60 dark:text-amber-400 dark:bg-amber-500/10 dark:border-amber-500/20",
-    pending_payment: "text-blue-700 bg-blue-50 border border-blue-200/60 dark:text-blue-400 dark:bg-blue-500/10 dark:border-blue-500/20",
-    confirmed: "text-emerald-700 bg-emerald-50 border border-emerald-200/60 dark:text-emerald-400 dark:bg-emerald-500/10 dark:border-emerald-500/20",
-    cancelled: "text-zinc-650 bg-zinc-50 border border-zinc-200/60 dark:text-zinc-400 dark:bg-zinc-900/50 dark:border-zinc-800/60",
+    pending: "border-amber-500 bg-amber-500/15 text-amber-600 dark:text-amber-400 font-semibold",
+    confirmed: "border-emerald-500 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold",
+    pending_payment: "border-blue-500 bg-blue-500/15 text-blue-600 dark:text-blue-400 font-semibold",
+    cancelled: "border-red-500 bg-red-500/15 text-red-600 dark:text-red-400 font-semibold",
 };
 
 const statusLabels: Record<BookingStatus | string, string> = {
@@ -130,6 +130,7 @@ export function AdminConsole() {
     // Settings Edit States
     const [settingsForm, setSettingsForm] = useState<BusinessSettings | null>(null);
     const [theme, setTheme] = useState<"light" | "dark">("dark");
+    const [isMutating, setIsMutating] = useState(false);
     // Check existing session
     useEffect(() => {
         const auth = sessionStorage.getItem("albatros_admin_auth") === "true";
@@ -225,7 +226,7 @@ export function AdminConsole() {
     }, [authorized]);
 
     useEffect(() => {
-        if (!authorized || !realTime || isAnyModalActive) return;
+        if (!authorized || !realTime || isAnyModalActive || isMutating) return;
 
         let active = true;
         const interval = setInterval(() => {
@@ -398,13 +399,32 @@ export function AdminConsole() {
     const handleSaveEdit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!activeBookingId) return;
+        setIsMutating(true);
+        // Optimistic UI update
+        setBookings(prev => prev.map(b => b.id === activeBookingId ? {
+            ...b,
+            firstName: editForm.firstName,
+            lastName: editForm.lastName,
+            email: editForm.email,
+            phone: editForm.phone,
+            date: editForm.date,
+            eventType: editForm.eventType,
+            guests: editForm.guests,
+            notes: editForm.notes,
+            price: editForm.price,
+            deposit: editForm.deposit,
+            balance: editForm.balance,
+            status: editForm.status
+        } : b));
         try {
             await editBooking(activeBookingId, editForm);
             toast.success("Réservation modifiée avec succès !");
             setIsEditing(false);
-            loadData();
         } catch (err: any) {
             toast.error(err.message || "Erreur lors de la modification");
+        } finally {
+            setIsMutating(false);
+            loadData();
         }
     };
 
@@ -426,6 +446,8 @@ export function AdminConsole() {
                 toast.error("Veuillez choisir une date.");
                 return;
             }
+
+            setIsMutating(true);
 
             const res = await createBooking({
                 firstName: manualForm.firstName,
@@ -456,10 +478,12 @@ export function AdminConsole() {
                     price: 4000,
                     deposit: 1200
                 });
-                loadData();
             }
         } catch (err: any) {
             toast.error(err.message || "Erreur de création de la réservation");
+        } finally {
+            setIsMutating(false);
+            loadData();
         }
     };
 
@@ -467,12 +491,15 @@ export function AdminConsole() {
     const handleSaveSettings = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!settingsForm) return;
+        setIsMutating(true);
         try {
             await updateSettings(settingsForm);
             toast.success("Paramètres système enregistrés !");
-            loadData();
         } catch (err: any) {
             toast.error(err.message || "Erreur lors de la sauvegarde");
+        } finally {
+            setIsMutating(false);
+            loadData();
         }
     };
 
@@ -585,26 +612,28 @@ export function AdminConsole() {
 
     // Status handlers
     const handleStatusChange = async (id: string, status: BookingStatus) => {
-        try {
-            if (status === "cancelled") {
-                const booking = bookings.find((b) => b.id === id);
-                if (booking?.status === "confirmed") {
-                    setRefundTargetId(id);
-                    setShowRefundModal(true);
-                    return;
-                }
-                await updateBookingStatus(id, status);
-                toast.success("Réservation annulée.");
-            } else {
-                await updateBookingStatus(id, status);
-                toast.success(status === "confirmed" ? "Réservation confirmée !" : "Statut mis à jour.");
+        if (status === "cancelled") {
+            const booking = bookings.find((b) => b.id === id);
+            if (booking?.status === "confirmed") {
+                setRefundTargetId(id);
+                setShowRefundModal(true);
+                return;
             }
-            loadData();
+        }
+        setIsMutating(true);
+        // Optimistic UI update
+        setBookings(prev => prev.map(b => b.id === id ? { ...b, status } : b));
+        try {
+            await updateBookingStatus(id, status);
+            toast.success(status === "cancelled" ? "Réservation annulée." : (status === "confirmed" ? "Réservation confirmée !" : "Statut mis à jour."));
             if (activeBookingId === id) {
                 setActiveBookingId(null);
             }
         } catch (e: any) {
             toast.error(e.message || "Erreur de mise à jour");
+        } finally {
+            setIsMutating(false);
+            loadData();
         }
     };
 
@@ -615,24 +644,35 @@ export function AdminConsole() {
             return;
         }
         const reason = blockReason.trim() || "Fermeture manuelle";
+        setIsMutating(true);
+        // Optimistic UI update
+        setBlockedDates(prev => [...prev, { date: selectedBlockDate, reason }]);
         try {
             await blockDate(selectedBlockDate, reason);
             toast.success(`Date ${selectedBlockDate} bloquée.`);
-            loadData();
             setSelectedBlockDate(null);
             setReason("");
         } catch (e: any) {
             toast.error(e.message);
+        } finally {
+            setIsMutating(false);
+            loadData();
         }
     };
 
     const handleUnblockDate = async (date: string) => {
+        setIsMutating(true);
+        // Optimistic UI update
+        setBlockedDates(prev => prev.filter(b => b.date !== date));
+        if (selectedBlockDate === date) setSelectedBlockDate(null);
         try {
             await unblockDate(date);
             toast.success(`Date ${date} débloquée.`);
-            loadData();
         } catch (e: any) {
             toast.error(e.message);
+        } finally {
+            setIsMutating(false);
+            loadData();
         }
     };
 
@@ -640,13 +680,18 @@ export function AdminConsole() {
     const handleRefundConfirm = async () => {
         if (!refundTargetId) return;
         setShowRefundModal(false);
+        setIsMutating(true);
+        // Optimistic UI update (cancelling status)
+        setBookings(prev => prev.map(b => b.id === refundTargetId ? { ...b, status: "cancelled" } : b));
         try {
             await refundBooking(refundTargetId);
             toast.success("Réservation remboursée et annulée.");
-            loadData();
             if (activeBookingId === refundTargetId) setActiveBookingId(null);
         } catch (e: any) {
             toast.error(e.message || "Erreur de remboursement");
+        } finally {
+            setIsMutating(false);
+            loadData();
         }
         setRefundTargetId(null);
     };
@@ -667,13 +712,18 @@ export function AdminConsole() {
     const handleDeleteConfirm = async () => {
         if (!deleteTargetId) return;
         setShowDeleteConfirm(false);
+        setIsMutating(true);
+        // Optimistic UI update (soft-deleted bookings status is cancelled)
+        setBookings(prev => prev.map(b => b.id === deleteTargetId ? { ...b, status: 'cancelled' } : b));
         try {
             await deleteBooking(deleteTargetId);
             toast.success("Réservation déplacée dans la corbeille.");
-            loadData();
             if (activeBookingId === deleteTargetId) setActiveBookingId(null);
         } catch (e: any) {
             toast.error(e.message);
+        } finally {
+            setIsMutating(false);
+            loadData();
         }
         setDeleteTargetId(null);
     };
@@ -687,12 +737,17 @@ export function AdminConsole() {
     const handleRestoreConfirm = async () => {
         if (!restoreTargetId) return;
         setShowRestoreConfirm(false);
+        setIsMutating(true);
+        // Optimistic UI update (restored bookings status is pending)
+        setBookings(prev => prev.map(b => b.id === restoreTargetId ? { ...b, status: 'pending' } : b));
         try {
             await restoreBooking(restoreTargetId);
             toast.success("Réservation restaurée !");
-            loadData();
         } catch (e: any) {
             toast.error(e.message || "Erreur de restauration");
+        } finally {
+            setIsMutating(false);
+            loadData();
         }
         setRestoreTargetId(null);
     };
@@ -706,91 +761,106 @@ export function AdminConsole() {
     const handlePermanentDeleteConfirm = async () => {
         if (!permanentDeleteTargetId) return;
         setShowPermanentDeleteConfirm(false);
+        setIsMutating(true);
+        // Optimistic UI update
+        setBookings(prev => prev.filter(b => b.id !== permanentDeleteTargetId));
         try {
             await permanentDeleteBooking(permanentDeleteTargetId);
             toast.success("Réservation supprimée définitivement.");
-            loadData();
         } catch (e: any) {
             toast.error(e.message || "Erreur de suppression");
+        } finally {
+            setIsMutating(false);
+            loadData();
         }
         setPermanentDeleteTargetId(null);
     };
 
     if (!authorized) {
         return (
-            <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden dark bg-zinc-50 dark:bg-[#060608]" dir="ltr">
-                {/* Solid Background & Gold Glow */}
-                <div className="absolute inset-0 bg-zinc-50 dark:bg-[#060608]">
-                    <div className="absolute pointer-events-none" style={{ width: '100%', height: '100%', background: "radial-gradient(circle at 50% 0%, rgba(198,169,105,0.15) 0%, transparent 60%)" }} />
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden dark bg-[#030304]" dir="ltr">
+                {/* Ambient Lighting & Luxury Grid Backdrop */}
+                <div className="absolute inset-0 bg-[#030304] pointer-events-none">
+                    <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(#C6A969 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+                    <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-[#C6A969]/5 rounded-full filter blur-[120px] animate-pulse-slow" />
+                    <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-zinc-900/10 rounded-full filter blur-[150px]" />
+                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#030304]/40 to-[#030304]" />
                 </div>
 
                 {/* Back to site button */}
                 <div className="absolute top-8 left-8 z-20">
-                    <a href="/" onClick={(e) => { e.preventDefault(); window.history.pushState({}, "", "/"); }} className="inline-flex items-center gap-2 text-black/ dark:text-white/ hover:text-zinc-900 dark:text-white transition-colors font-sans text-sm uppercase tracking-[0.25em] font-semibold bg-black/5 dark:bg-white/5 px-4 py-2 rounded-none border border-black/10 dark:border-white/10 hover:border-white/20">
-                        <i className="fa-solid fa-arrow-left text-sm"></i> Retour au site
+                    <a href="/" onClick={(e) => { e.preventDefault(); window.history.pushState({}, "", "/"); }} 
+                       className="inline-flex items-center gap-2.5 text-zinc-400 hover:text-white transition-all duration-300 font-sans text-xs uppercase tracking-[0.25em] font-semibold bg-white/[0.02] hover:bg-[#C6A969]/10 px-5 py-3 border border-white/[0.04] hover:border-[#C6A969]/30 rounded-none relative group overflow-hidden">
+                        <span className="absolute inset-y-0 left-0 w-0 bg-[#C6A969]/10 group-hover:w-full transition-all duration-500 ease-out" />
+                        <i className="fa-solid fa-arrow-left text-xs relative z-10 transition-transform group-hover:-translate-x-1"></i>
+                        <span className="relative z-10">Retour au site</span>
                     </a>
                 </div>
 
-                {/* Login Card */}
+                {/* Login Card Container */}
                 <div className="relative z-10 w-full max-w-md px-6 animate-fade-in-up">
-                    <div className="bg-white dark:bg-[#0A0A0C] border border-[#C6A969]/30 p-8 sm:p-10 space-y-8 shadow-[0_30px_60px_rgba(0,0,0,0.4)]">
+                    <div className="backdrop-blur-2xl bg-zinc-950/60 border border-white/[0.06] hover:border-[#C6A969]/30 p-8 sm:p-10 space-y-8 shadow-[0_24px_80px_rgba(0,0,0,0.8)] transition-all duration-700 group">
+                        
+                        {/* Decorative Top Accent line */}
+                        <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-[#C6A969] to-transparent" />
 
                         <div className="text-center space-y-3">
-                            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#C6A969]/10 border border-[#C6A969]/20 mb-2">
-                                <i className="fa-solid fa-lock text-[#C6A969] text-lg"></i>
+                            <div className="inline-flex items-center justify-center w-14 h-14 rounded-none bg-[#C6A969]/5 border border-[#C6A969]/15 mb-3 group-hover:border-[#C6A969]/40 transition-colors duration-500">
+                                <i className="fa-solid fa-shield-halved text-[#C6A969] text-xl"></i>
                             </div>
-                            <h2 className="font-display text-3xl font-medium tracking-tight text-zinc-900 dark:text-white">
-                                Console <span style={{ color: "#C6A969" }}>Privée</span>
+                            <h2 className="font-display text-3xl font-medium tracking-tight text-white">
+                                Console <span className="text-gold-gradient">Privée</span>
                             </h2>
-                            <p className="font-sans text-sm font-semibold uppercase tracking-[0.25em] text-zinc-600 dark:text-zinc-400">
-                                Accès réservé aux administrateurs
+                            <p className="font-sans text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-550 dark:text-zinc-500">
+                                Administration Albatros
                             </p>
                         </div>
 
                         <form onSubmit={handleLogin} className="space-y-6">
                             <div className="space-y-4">
-                                <div className="relative group">
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none transition-colors group-focus-within:text-[#C6A969] text-zinc-500 dark:text-zinc-500">
-                                        <i className="fa-solid fa-user text-xs"></i>
+                                <div className="relative group/input">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none transition-colors group-focus-within/input:text-[#C6A969] text-zinc-500 dark:text-zinc-655">
+                                        <i className="fa-solid fa-user-shield text-xs"></i>
                                     </span>
-                                    <input type="text" required autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Utilisateur"
-                                        className="input-lux pl-11 h-14" />
+                                    <input type="text" required autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Identifiant"
+                                        className="w-full px-5 py-4 pl-12 bg-zinc-950/55 border border-white/[0.06] text-sm text-white focus:outline-none focus:border-[#C6A969]/50 focus:ring-1 focus:ring-[#C6A969]/30 transition-all duration-300 rounded-none placeholder:text-zinc-600 h-14 font-sans" />
                                 </div>
 
-                                <div className="relative group">
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none transition-colors group-focus-within:text-[#C6A969] text-zinc-500 dark:text-zinc-500">
-                                        <i className="fa-solid fa-key text-xs"></i>
+                                <div className="relative group/input">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none transition-colors group-focus-within/input:text-[#C6A969] text-zinc-500 dark:text-zinc-655">
+                                        <i className="fa-solid fa-lock-open text-xs"></i>
                                     </span>
                                     <input type={showPass ? "text" : "password"} required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mot de passe"
-                                        className="input-lux pl-11 pr-12 h-14" />
+                                        className="w-full px-5 py-4 pl-12 pr-12 bg-zinc-950/55 border border-white/[0.06] text-sm text-white focus:outline-none focus:border-[#C6A969]/50 focus:ring-1 focus:ring-[#C6A969]/30 transition-all duration-300 rounded-none placeholder:text-zinc-600 h-14 font-sans" />
                                     <button type="button" tabIndex={-1} onClick={() => setShowPass(!showPass)}
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-none cursor-pointer transition-colors text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-white/10">
-                                        <i className={`fa-solid ${showPass ? "fa-eye-slash" : "fa-eye"} text-[11px]`}></i>
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-none cursor-pointer transition-all text-zinc-600 dark:text-zinc-450 hover:text-white hover:bg-white/5">
+                                        <i className={`fa-solid ${showPass ? "fa-eye-slash" : "fa-eye"} text-xs`}></i>
                                     </button>
                                 </div>
                             </div>
 
                             {authError && (
-                                <div className="flex items-center gap-3 px-4 py-3 rounded-none bg-red-500/10 border border-red-500/20 animate-fade-in ">
-                                    <i className="fa-solid fa-circle-exclamation text-red-500 text-xs shrink-0"></i>
+                                <div className="flex items-center gap-3 px-4 py-3 rounded-none bg-red-500/10 border border-red-500/20 animate-fade-in text-left">
+                                    <i className="fa-solid fa-circle-exclamation text-red-500 text-xs shrink-0 animate-bounce"></i>
                                     <span className="font-sans text-xs text-red-400 font-medium">{authError}</span>
                                 </div>
                             )}
 
                             <button type="submit" disabled={isLoggingIn}
-                                className="btn btn-gold shine-effect w-full h-14 text-sm disabled:opacity-70 disabled:cursor-not-allowed">
-                                <span className="relative z-10 flex items-center justify-center gap-2">
+                                className="w-full h-14 bg-[#C6A969] hover:bg-[#D4B978] disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed hover:shadow-[0_8px_30px_rgba(198,169,105,0.2)] hover:-translate-y-0.5 active:scale-[0.98] text-zinc-950 font-sans text-sm font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer flex items-center justify-center relative overflow-hidden group/btn">
+                                <span className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 -translate-x-full group-hover/btn:animate-shimmer" />
+                                <span className="relative z-10 flex items-center justify-center gap-2 text-zinc-950">
                                     {isLoggingIn ? (
                                         <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg> Connexion…</>
                                     ) : (
-                                        <>Accéder au tableau de bord <i className="fa-solid fa-arrow-right text-sm"></i></>
+                                        <>Accéder au tableau de bord <i className="fa-solid fa-chevron-right text-xs transition-transform group-hover/btn:translate-x-1"></i></>
                                     )}
                                 </span>
                             </button>
                         </form>
                     </div>
-                    <p className="mt-8 font-sans text-sm text-center text-black/ dark:text-white/ uppercase tracking-widest">
-                        Albatros © {new Date().getFullYear()}
+                    <p className="mt-8 font-sans text-[10px] font-bold text-center text-zinc-550 dark:text-zinc-600 uppercase tracking-[0.3em]">
+                        Salle des fêtes Albatros © {new Date().getFullYear()}
                     </p>
                 </div>
             </div>
@@ -799,31 +869,32 @@ export function AdminConsole() {
 
     const SidebarButton = ({ icon, label, active, onClick }: { icon: string; label: string; active: boolean; onClick: () => void }) => {
         return (
-            <button onClick={onClick} className={`flex items-center gap-4 w-full p-3 rounded-none transition-all duration-300 shrink-0 ${active ? 'bg-zinc-100 dark:bg-white/10 text-zinc-900 dark:text-white border-l-2 border-[#C6A969]' : 'text-zinc-500 hover:bg-zinc-50 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-white border-l-2 border-transparent'}`}>
-                <div className="w-6 flex justify-center shrink-0"><i className={`fa-solid ${icon} text-lg`}></i></div>
-                <span className="font-sans text-sm font-medium tracking-wide whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">{label}</span>
+            <button onClick={onClick} className={`flex items-center gap-4 w-full p-3.5 rounded-none transition-all duration-300 shrink-0 border-l-2 ${active ? 'bg-gradient-to-r from-[#C6A969]/10 to-transparent text-white border-[#C6A969] shadow-[inset_4px_0_12px_rgba(198,169,105,0.03)]' : 'text-zinc-450 hover:bg-white/[0.02] hover:text-white border-transparent'}`}>
+                <div className="w-6 flex justify-center shrink-0">
+                    <i className={`fa-solid ${icon} text-lg transition-transform duration-300 group-hover:scale-105 ${active ? 'text-[#C6A969] drop-shadow-[0_0_8px_rgba(198,169,105,0.35)]' : 'text-zinc-500'}`}></i>
+                </div>
+                <span className="font-sans text-xs font-bold uppercase tracking-wider whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">{label}</span>
             </button>
         );
     };
 
     const MobileTabButton = ({ icon, active, onClick }: { icon: string; active: boolean; onClick: () => void }) => {
         return (
-            <button onClick={onClick} className={`flex items-center justify-center w-12 h-12 rounded-none transition-all ${active ? 'text-[#C6A969]' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'}`}>
-                <i className={`fa-solid ${icon} text-xl`}></i>
+            <button onClick={onClick} className={`flex items-center justify-center w-12 h-12 rounded-full transition-all duration-300 cursor-pointer ${active ? 'text-[#C6A969] bg-[#C6A969]/10 scale-105 border border-[#C6A969]/25 shadow-[0_4px_12px_rgba(198,169,105,0.15)]' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}>
+                <i className={`fa-solid ${icon} text-lg`}></i>
             </button>
         );
     };
 
 
     return (
-        <div className={`min-h-screen flex flex-col lg:flex-row font-sans antialiased bg-zinc-50 dark:bg-[#09090B] text-zinc-900 dark:text-zinc-100 ${theme}`} dir="ltr">
+        <div className={`min-h-screen flex flex-col lg:flex-row font-sans antialiased bg-[#050507] text-zinc-300 overflow-x-hidden ${theme}`} dir="ltr">
             <Toaster position="top-right" toastOptions={{ className: 'dark:bg-zinc-900 dark:text-white rounded-none border border-[#C6A969]/20' }} />
-            {/* Grain overlay */}
             
             {/* DESKTOP SIDEBAR */}
-            <aside className="hidden lg:flex flex-col w-20 hover:w-64 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] fixed inset-y-0 left-0 z-50 bg-white dark:bg-[#0A0A0C] border-r border-zinc-200 dark:border-white/10 group overflow-hidden shadow-2xl">
-                <div className="flex items-center h-20 px-6 shrink-0 border-b border-zinc-200 dark:border-white/10">
-                    <span className="font-display text-2xl font-medium tracking-tight text-zinc-900 dark:text-white shrink-0 flex items-center">
+            <aside className="hidden lg:flex flex-col w-20 hover:w-64 transition-all duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] fixed inset-y-0 left-0 z-50 bg-[#08080A]/95 border-r border-white/[0.04] backdrop-blur-md group overflow-hidden shadow-2xl">
+                <div className="flex items-center h-20 px-6 shrink-0 border-b border-white/[0.04]">
+                    <span className="font-display text-2xl font-medium tracking-tight text-white shrink-0 flex items-center">
                         A<span className="text-[#C6A969] group-hover:hidden">.</span>
                         <span className="hidden group-hover:inline opacity-0 group-hover:opacity-100 group-hover:animate-fade-in transition-opacity">lbatros<span className="text-[#C6A969]">.</span></span>
                     </span>
@@ -833,50 +904,50 @@ export function AdminConsole() {
                     <SidebarButton icon="fa-rectangle-list" label="Réservations" active={activeTab === "bookings"} onClick={() => setActiveTab("bookings")} />
                     <SidebarButton icon="fa-calendar-days" label="Calendrier" active={activeTab === "calendar"} onClick={() => setActiveTab("calendar")} />
                     <SidebarButton icon="fa-gear" label="Configuration" active={activeTab === "settings"} onClick={() => setActiveTab("settings")} />
-                    <div className="my-4 border-t border-zinc-200 dark:border-white/10 mx-6" />
+                    <div className="my-4 border-t border-white/[0.04] mx-6" />
                     <SidebarButton icon="fa-trash-can" label="Corbeille" active={activeTab === "trash"} onClick={() => setActiveTab("trash")} />
                 </nav>
-                <div className="p-4 border-t border-zinc-200 dark:border-white/10 space-y-2">
-                    <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="flex items-center gap-4 w-full p-3 rounded-none text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 transition-colors shrink-0">
+                <div className="p-4 border-t border-white/[0.04] space-y-2">
+                    <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="flex items-center gap-4 w-full p-3 rounded-none text-zinc-400 hover:text-white hover:bg-white/5 transition-colors shrink-0">
                         <div className="w-6 flex justify-center shrink-0"><i className={`fa-solid ${theme === 'dark' ? 'fa-sun' : 'fa-moon'} text-lg`}></i></div>
-                        <span className="font-sans text-sm font-medium tracking-wide whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="font-sans text-xs font-bold uppercase tracking-wider whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
                             {theme === 'dark' ? 'Mode Clair' : 'Mode Sombre'}
                         </span>
                     </button>
-                    <button onClick={handleLogout} className="flex items-center gap-4 w-full p-3 rounded-none text-zinc-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors shrink-0">
+                    <button onClick={handleLogout} className="flex items-center gap-4 w-full p-3 rounded-none text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0">
                         <div className="w-6 flex justify-center shrink-0"><i className="fa-solid fa-right-from-bracket text-lg"></i></div>
-                        <span className="font-sans text-sm font-medium tracking-wide whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Déconnexion</span>
+                        <span className="font-sans text-xs font-bold uppercase tracking-wider whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Déconnexion</span>
                     </button>
                 </div>
             </aside>
 
-            {/* MOBILE TOP NAV & BOTTOM BAR */}
-            <div className="lg:hidden fixed top-0 inset-x-0 h-16 bg-white dark:bg-[#0A0A0C] border-b border-zinc-200 dark:border-white/10 z-40 flex items-center justify-between px-6 shadow-sm">
-                <span className="font-display text-xl font-medium tracking-tight text-zinc-900 dark:text-white">Albatros<span className="text-[#C6A969]">.</span></span>
-                <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="text-zinc-500 hover:text-zinc-900 dark:hover:text-white">
+            {/* MOBILE TOP NAV & FLOATING BOTTOM DOCK */}
+            <div className="lg:hidden fixed top-0 inset-x-0 h-16 bg-[#08080A]/90 border-b border-white/[0.04] backdrop-blur-md z-40 flex items-center justify-between px-6 shadow-sm">
+                <span className="font-display text-xl font-medium tracking-tight text-white">Albatros<span className="text-[#C6A969]">.</span></span>
+                <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="text-zinc-400 hover:text-white transition-colors duration-300">
                     <i className={`fa-solid ${theme === 'dark' ? 'fa-sun' : 'fa-moon'} text-lg`}></i>
                 </button>
             </div>
 
-            <div className="lg:hidden fixed bottom-0 inset-x-0 h-16 bg-white dark:bg-[#0A0A0C] border-t border-zinc-200 dark:border-white/10 z-50 flex items-center justify-around px-2 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">
+            <div className="lg:hidden fixed bottom-4 inset-x-4 h-16 bg-[#08080A]/85 border border-white/[0.06] backdrop-blur-xl z-50 flex items-center justify-around px-3 shadow-[0_15px_40px_rgba(0,0,0,0.5)] rounded-full overflow-x-auto whitespace-nowrap scrollbar-hide">
                 <MobileTabButton icon="fa-chart-pie" active={activeTab === "dashboard"} onClick={() => setActiveTab("dashboard")} />
                 <MobileTabButton icon="fa-rectangle-list" active={activeTab === "bookings"} onClick={() => setActiveTab("bookings")} />
                 <MobileTabButton icon="fa-calendar-days" active={activeTab === "calendar"} onClick={() => setActiveTab("calendar")} />
                 <MobileTabButton icon="fa-gear" active={activeTab === "settings"} onClick={() => setActiveTab("settings")} />
-                <button onClick={handleLogout} className="text-zinc-500 hover:text-red-500 w-12 h-12 flex items-center justify-center">
-                    <i className="fa-solid fa-right-from-bracket text-xl"></i>
+                <button onClick={handleLogout} className="text-zinc-400 hover:text-red-400 w-12 h-12 flex items-center justify-center rounded-full hover:bg-white/5 transition-all duration-350 cursor-pointer">
+                    <i className="fa-solid fa-right-from-bracket text-lg"></i>
                 </button>
             </div>
 
             {/* MAIN VIEW CONTROLLER */}
-            <main className="flex-grow w-full lg:ml-20 transition-all duration-300">
-                <div className="max-w-6xl mx-auto px-6 lg:px-12 py-24 pb-32 flex flex-col relative z-10">
+            <main className="flex-grow w-full max-w-full overflow-x-hidden lg:ml-20 transition-all duration-300">
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-12 py-24 pb-32 flex flex-col relative z-10">
 
                     {/* VIEW HEADER & ACTIONS */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-8 border-b border-black/5 dark:border-white/[0.06]">
-                        <div className="space-y-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-8 border-b border-white/[0.04] text-left">
+                        <div className="space-y-1.5">
                             <div className="flex items-center gap-3">
-                                <span className="font-sans text-sm uppercase tracking-[0.25em] text-[#C6A969] font-semibold">
+                                <span className="font-sans text-[10px] font-bold uppercase tracking-[0.25em] text-[#C6A969]">
                                     {activeTab === "dashboard" && "Vue d'ensemble"}
                                     {activeTab === "bookings" && "Gestion"}
                                     {activeTab === "calendar" && "Planification"}
@@ -885,27 +956,27 @@ export function AdminConsole() {
                                 </span>
                                 <div className="w-6 h-px bg-[#C6A969]/40" />
                             </div>
-                            <h1 className="font-display text-3xl font-medium tracking-tight text-zinc-900 dark:text-white">
+                            <h1 className="font-display text-3xl font-semibold tracking-tight text-white">
                                 {activeTab === "dashboard" && "Tableau de Bord"}
                                 {activeTab === "bookings" && "Réservations"}
                                 {activeTab === "calendar" && "Calendrier Général"}
-                                {activeTab === "settings" && "Configuration de la Salle"}
-                                {activeTab === "trash" && "Réservations Supprimées"}
+                                {activeTab === "settings" && "Configuration"}
+                                {activeTab === "trash" && "Historique Annulations"}
                             </h1>
-                            <p className="text-zinc-500 dark:text-zinc-500 text-xs font-sans">
+                            <p className="text-zinc-500 text-xs font-sans">
                                 Gérez votre établissement Albatros en toute simplicité
                             </p>
                         </div>
 
-                        <div className="flex gap-2 items-center">
+                        <div className="flex gap-2.5 items-center">
                             {(activeTab === "dashboard" || activeTab === "bookings") && (
                                 <button 
                                     type="button"
                                     onClick={() => setRealTime(!realTime)}
-                                    className={`px-3 py-2 font-sans text-xs font-bold uppercase tracking-wider border transition-all rounded-none cursor-pointer flex items-center gap-2 ${
+                                    className={`px-3.5 py-2.5 font-sans text-[10px] font-bold uppercase tracking-wider border transition-all duration-300 rounded-none cursor-pointer flex items-center gap-2 ${
                                         realTime 
-                                            ? "bg-emerald-950/20 border-emerald-500/30 text-emerald-400" 
-                                            : "bg-white/[0.02] border-black/10 dark:border-white/[0.06] text-zinc-500 hover:text-zinc-300"
+                                            ? "bg-emerald-950/20 border-emerald-500/30 text-emerald-450 shadow-[0_0_15px_rgba(16,185,129,0.1)]" 
+                                            : "bg-white/[0.02] border-white/[0.04] text-zinc-500 hover:text-zinc-300"
                                     }`}
                                     title={realTime ? "Désactiver la mise à jour en temps réel" : "Activer la mise à jour en temps réel"}
                                 >
@@ -920,18 +991,18 @@ export function AdminConsole() {
                             {activeTab === "dashboard" && (
                                 <>
                                     <button onClick={() => setShowManualModal(true)}
-                                        className="px-4 py-2 bg-[#C6A969] hover:brightness-110 text-zinc-900 dark:text-white font-sans text-sm font-bold uppercase tracking-wider shadow-none transition-all rounded-none cursor-pointer flex items-center gap-2">
+                                        className="px-4 py-2.5 bg-[#C6A969] hover:bg-[#D4B978] text-zinc-950 font-sans text-[10px] font-bold uppercase tracking-wider shadow-[0_4px_15px_rgba(198,169,105,0.15)] hover:shadow-[0_4px_20px_rgba(198,169,105,0.25)] transition-all duration-300 rounded-none cursor-pointer flex items-center gap-2">
                                         <i className="fa-solid fa-plus text-xs"></i> Créer Réservation
                                     </button>
                                     <button onClick={exportToCSV}
-                                        className="px-4 py-2 bg-white/[0.04] hover:brightness-110 text-zinc-300 font-sans text-sm font-bold uppercase tracking-wider border border-black/10 dark:border-white/[0.08] transition-all rounded-none cursor-pointer flex items-center gap-2">
+                                        className="px-4 py-2.5 bg-white/[0.02] hover:bg-white/[0.04] text-zinc-300 font-sans text-[10px] font-bold uppercase tracking-wider border border-white/[0.04] hover:border-white/[0.08] transition-all duration-300 rounded-none cursor-pointer flex items-center gap-2">
                                         <i className="fa-solid fa-download text-xs"></i> Exporter CSV
                                     </button>
                                 </>
                             )}
                             {activeTab === "bookings" && (
                                 <button onClick={exportToCSV}
-                                    className="px-4 py-2 bg-white/[0.04] hover:brightness-110 text-zinc-300 font-sans text-sm font-bold uppercase tracking-wider border border-black/10 dark:border-white/[0.08] transition-all rounded-none cursor-pointer flex items-center gap-2">
+                                    className="px-4 py-2.5 bg-white/[0.02] hover:bg-white/[0.04] text-zinc-300 font-sans text-[10px] font-bold uppercase tracking-wider border border-white/[0.04] hover:border-white/[0.08] transition-all duration-300 rounded-none cursor-pointer flex items-center gap-2">
                                     <i className="fa-solid fa-download text-xs"></i> Exporter CSV
                                 </button>
                             )}
@@ -950,11 +1021,11 @@ export function AdminConsole() {
                             </div>
 
                             {/* Recent Bookings (Full Width Table) */}
-                            <div className="bg-white/80 dark:bg-[#121214]/80 border border-zinc-200/80 dark:border-zinc-800/80 rounded-none p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] dark:shadow-none space-y-5 transition-all duration-500 card-hover-lift hover:shadow-[0_20px_40px_rgba(0,0,0,0.04)] dark:hover:shadow-[0_20px_40px_rgba(0,0,0,0.15)]">
-                                <div className="flex justify-between items-center pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                            <div className="bg-[#0C0C0E]/60 backdrop-blur-md border border-white/[0.04] p-6 space-y-5 transition-all duration-500 hover:border-white/[0.08] shadow-2xl">
+                                <div className="flex justify-between items-center pb-3 border-b border-white/[0.04]">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-1 h-5 bg-[#C6A969] rounded-none" />
-                                        <h2 className="font-display text-lg font-medium text-zinc-900 dark:text-white">
+                                        <div className="w-1 h-5 bg-[#C6A969] rounded-none animate-pulse" />
+                                        <h2 className="font-display text-lg font-medium text-white">
                                             Réservations Récentes
                                         </h2>
                                     </div>
@@ -966,10 +1037,11 @@ export function AdminConsole() {
                                     </button>
                                 </div>
 
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left border-collapse">
+                                <div>
+                                    {/* Desktop View Table */}
+                                    <table className="hidden md:table w-full text-left border-collapse">
                                         <thead>
-                                            <tr className="border-b border-zinc-100 dark:border-zinc-800 text-sm font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
+                                            <tr className="border-b border-white/[0.04] text-[10px] font-bold uppercase tracking-wider text-zinc-500">
                                                 <th className="pb-3 px-3">Réf</th>
                                                 <th className="pb-3 px-3">Date</th>
                                                 <th className="pb-3 px-3">Client</th>
@@ -980,24 +1052,24 @@ export function AdminConsole() {
                                         </thead>
                                         <tbody>
                                             {activeBookings.slice(0, 5).map((b) => (
-                                                <tr key={b.id} className="border-b border-zinc-100/60 dark:border-zinc-800/40 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30 transition-colors">
+                                                <tr key={b.id} className="border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors">
                                                     <td className="py-3.5 px-3 font-semibold text-[#C6A969] text-xs whitespace-nowrap">
                                                         {b.id}
                                                     </td>
-                                                    <td className="py-3.5 px-3 text-xs font-medium text-zinc-800 dark:text-zinc-200 whitespace-nowrap">
+                                                    <td className="py-3.5 px-3 text-xs font-medium text-zinc-300 whitespace-nowrap">
                                                         {b.date}
                                                     </td>
-                                                    <td className="py-3.5 px-3 text-xs font-semibold text-zinc-900 dark:text-white whitespace-nowrap">
+                                                    <td className="py-3.5 px-3 text-xs font-semibold text-white whitespace-nowrap">
                                                         {b.firstName} {b.lastName}
                                                     </td>
-                                                    <td className="py-3.5 px-3 text-xs text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                                                    <td className="py-3.5 px-3 text-xs text-zinc-400 whitespace-nowrap">
                                                         {eventLabels[b.eventType] || b.eventType}
                                                     </td>
-                                                    <td className="py-3.5 px-3 text-right text-xs font-bold text-zinc-900 dark:text-white whitespace-nowrap">
+                                                    <td className="py-3.5 px-3 text-right text-xs font-bold text-white whitespace-nowrap">
                                                         {b.price.toLocaleString("fr-TN")} TND
                                                     </td>
                                                     <td className="py-3.5 px-3 text-center whitespace-nowrap">
-                                                        <span className={`px-2.5 py-0.5 rounded-none text-sm font-medium tracking-wide border ${statusColors[b.status]}`}>
+                                                        <span className={`px-2 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-wider border ${statusColors[b.status]}`}>
                                                             {statusLabels[b.status] || b.status}
                                                         </span>
                                                     </td>
@@ -1005,8 +1077,39 @@ export function AdminConsole() {
                                             ))}
                                         </tbody>
                                     </table>
+                                    
+                                    {/* Mobile View Cards */}
+                                    <div className="block md:hidden space-y-4">
+                                        {activeBookings.slice(0, 5).map((b) => (
+                                            <div key={b.id} className="border border-white/[0.04] bg-[#0C0C0E]/50 p-4 space-y-3 shadow-2xl rounded-none text-left transition-all duration-300 hover:border-[#C6A969]/10">
+                                                <div className="flex justify-between items-center pb-2 border-b border-white/[0.04]">
+                                                    <span className="font-semibold text-[#C6A969] text-xs">{b.id}</span>
+                                                    <span className={`px-2 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-wider border ${statusColors[b.status]}`}>
+                                                        {statusLabels[b.status] || b.status}
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-xs">
+                                                    <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Client:</span>
+                                                    <span className="font-semibold text-white">{b.firstName} {b.lastName}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-xs">
+                                                    <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Date:</span>
+                                                    <span className="text-zinc-300">{b.date}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-xs">
+                                                    <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Événement:</span>
+                                                    <span className="text-zinc-300">{eventLabels[b.eventType] || b.eventType}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-xs">
+                                                    <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Tarif:</span>
+                                                    <span className="font-bold text-white">{b.price.toLocaleString("fr-TN")} TND</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
                                     {activeBookings.length === 0 && (
-                                        <div className="text-center py-12 text-zinc-500 dark:text-zinc-500 text-xs italic font-sans">
+                                        <div className="text-center py-12 text-zinc-550 text-xs italic font-sans">
                                             Aucune réservation enregistrée.
                                         </div>
                                     )}
@@ -1016,23 +1119,23 @@ export function AdminConsole() {
                             {/* Split content below the table */}
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                 {/* Category Breakdown */}
-                                <div className="bg-white/80 dark:bg-[#121214]/80 border border-zinc-200/80 dark:border-zinc-800/80 rounded-none p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] dark:shadow-none space-y-5 transition-all duration-500 card-hover-lift hover:shadow-[0_20px_40px_rgba(0,0,0,0.04)] dark:hover:shadow-[0_20px_40px_rgba(0,0,0,0.15)]">
-                                    <div className="flex items-center gap-3 pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                                <div className="bg-[#0C0C0E]/60 backdrop-blur-md border border-white/[0.04] p-6 space-y-5 transition-all duration-500 hover:border-white/[0.08] shadow-2xl">
+                                    <div className="flex items-center gap-3 pb-3 border-b border-white/[0.04] text-left">
                                         <div className="w-1 h-5 bg-[#C6A969] rounded-none" />
-                                        <h3 className="font-display text-lg font-medium text-zinc-900 dark:text-white">
+                                        <h3 className="font-display text-lg font-medium text-white">
                                             Statistiques par Événement
                                         </h3>
                                     </div>
-                                    <div className="space-y-4 pt-1">
+                                    <div className="space-y-4 pt-1 text-left">
                                         {Object.entries(categoryBreakdown.counts).map(([cat, count]) => {
                                             const pct = Math.round(((count as number) / categoryBreakdown.maxVal) * 100);
                                             return (
                                                 <div key={cat} className="space-y-1.5">
-                                                    <div className="flex justify-between text-xs">
-                                                        <span className="text-zinc-650 dark:text-zinc-300 font-semibold">{cat}</span>
-                                                        <span className="text-zinc-600 dark:text-zinc-400 font-bold">{count} réservations</span>
+                                                    <div className="flex justify-between text-xs font-sans">
+                                                        <span className="text-zinc-300 font-semibold">{cat}</span>
+                                                        <span className="text-zinc-500 font-bold">{count} réservations</span>
                                                     </div>
-                                                    <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
+                                                    <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">
                                                         <div className="bg-[#C6A969] h-full rounded-none transition-all duration-500" style={{ width: `${pct}%` }} />
                                                     </div>
                                                 </div>
@@ -1042,19 +1145,19 @@ export function AdminConsole() {
                                 </div>
 
                                 {/* Tips & System info */}
-                                <div className="bg-white/80 dark:bg-[#121214]/80 border border-zinc-200/80 dark:border-zinc-800/80 rounded-none p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] dark:shadow-none space-y-5 transition-all duration-500 card-hover-lift hover:shadow-[0_20px_40px_rgba(0,0,0,0.04)] dark:hover:shadow-[0_20px_40px_rgba(0,0,0,0.15)]">
-                                    <div className="flex items-center gap-3 pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                                <div className="bg-[#0C0C0E]/60 backdrop-blur-md border border-white/[0.04] p-6 space-y-5 transition-all duration-500 hover:border-white/[0.08] shadow-2xl">
+                                    <div className="flex items-center gap-3 pb-3 border-b border-white/[0.04] text-left">
                                         <div className="w-1 h-5 bg-[#C6A969] rounded-none" />
-                                        <h3 className="font-display text-lg font-medium text-zinc-900 dark:text-white">
+                                        <h3 className="font-display text-lg font-medium text-white">
                                             Informations Générales
                                         </h3>
                                     </div>
-                                    <div className="space-y-4 pt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                        <div className="flex items-start gap-3 p-3.5 bg-[#FAF9F6] dark:bg-[#1C1C20] border border-zinc-200/50 dark:border-zinc-800/50 rounded-none">
+                                    <div className="space-y-4 pt-1 text-xs text-zinc-400 text-left">
+                                        <div className="flex items-start gap-3 p-3.5 bg-white/[0.02] border border-white/5">
                                             <i className="fa-solid fa-circle-info text-[#C6A969] mt-0.5 text-sm shrink-0"></i>
                                             <span><strong>Calendrier</strong> : Utilisez la section dédiée pour bloquer temporairement des dates ou visualiser le planning complet en grille.</span>
                                         </div>
-                                        <div className="flex items-start gap-3 p-3.5 bg-[#FAF9F6] dark:bg-[#1C1C20] border border-zinc-200/50 dark:border-zinc-800/50 rounded-none">
+                                        <div className="flex items-start gap-3 p-3.5 bg-white/[0.02] border border-white/5">
                                             <i className="fa-solid fa-bell text-[#C6A969] mt-0.5 text-sm shrink-0"></i>
                                             <span>Pour toute réservation en attente, vous disposez d'un accès rapide pour contacter le client par WhatsApp ou Email directement depuis la console.</span>
                                         </div>
@@ -1066,9 +1169,9 @@ export function AdminConsole() {
 
                     {/* Tab 2: Bookings List View */}
                     {activeTab === "bookings" && (
-                        <div className="bg-white/80 dark:bg-[#121214]/80 border border-zinc-200/80 dark:border-zinc-800/80 rounded-none p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] dark:shadow-none space-y-6 animate-fade-in transition-all duration-500">
+                        <div className="bg-[#0C0C0E]/60 backdrop-blur-md border border-white/[0.04] p-6 space-y-6 animate-fade-in transition-all duration-500 shadow-2xl">
                             {/* Filter controls */}
-                            <div className="flex flex-col md:flex-row gap-4 justify-between border-b border-zinc-100 dark:border-zinc-800 pb-5">
+                            <div className="flex flex-col md:flex-row gap-4 justify-between border-b border-white/[0.04] pb-5">
                                 <div className="relative flex-1 max-w-md">
                                     <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 dark:text-zinc-400" />
                                     <input
@@ -1080,31 +1183,31 @@ export function AdminConsole() {
                                     />
                                 </div>
 
-                                <div className="flex gap-1 bg-zinc-50 dark:bg-[#0A0A0C] p-1 border border-zinc-200 dark:border-zinc-800 rounded-none self-start">
+                                <div className="flex gap-1 bg-white/5 p-1 border border-white/5 rounded-none self-start overflow-x-auto whitespace-nowrap scrollbar-hide w-full sm:w-auto max-w-full">
                                     <button
                                         onClick={() => setStatusFilter("all")}
-                                        className={`px-4 py-2 text-xs font-semibold rounded-none transition-all cursor-pointer ${statusFilter === "all" ? "bg-white dark:bg-zinc-900 text-zinc-950 dark:text-white shadow-none border border-zinc-200/50 dark:border-zinc-800/50" : "text-zinc-500 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+                                        className={`px-4 py-2 text-xs font-semibold rounded-none transition-all cursor-pointer ${statusFilter === "all" ? "bg-[#C6A969] text-zinc-950 shadow-none" : "text-zinc-400 hover:text-white hover:bg-white/5"
                                             }`}
                                     >
                                         Tous
                                     </button>
                                     <button
                                         onClick={() => setStatusFilter("pending")}
-                                        className={`px-4 py-2 text-xs font-semibold rounded-none transition-all cursor-pointer ${statusFilter === "pending" ? "bg-white dark:bg-zinc-900 text-zinc-950 dark:text-white shadow-none border border-zinc-200/50 dark:border-zinc-800/50" : "text-zinc-500 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+                                        className={`px-4 py-2 text-xs font-semibold rounded-none transition-all cursor-pointer ${statusFilter === "pending" ? "bg-[#C6A969] text-zinc-950 shadow-none" : "text-zinc-400 hover:text-white hover:bg-white/5"
                                             }`}
                                     >
                                         En attente
                                     </button>
                                     <button
                                         onClick={() => setStatusFilter("confirmed")}
-                                        className={`px-4 py-2 text-xs font-semibold rounded-none transition-all cursor-pointer ${statusFilter === "confirmed" ? "bg-white dark:bg-zinc-900 text-zinc-950 dark:text-white shadow-none border border-zinc-200/50 dark:border-zinc-800/50" : "text-zinc-500 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+                                        className={`px-4 py-2 text-xs font-semibold rounded-none transition-all cursor-pointer ${statusFilter === "confirmed" ? "bg-[#C6A969] text-zinc-950 shadow-none" : "text-zinc-400 hover:text-white hover:bg-white/5"
                                             }`}
                                     >
                                         Confirmés
                                     </button>
                                     <button
                                         onClick={() => setStatusFilter("cancelled")}
-                                        className={`px-4 py-2 text-xs font-semibold rounded-none transition-all cursor-pointer ${statusFilter === "cancelled" ? "bg-white dark:bg-zinc-900 text-zinc-950 dark:text-white shadow-none border border-zinc-200/50 dark:border-zinc-800/50" : "text-zinc-500 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+                                        className={`px-4 py-2 text-xs font-semibold rounded-none transition-all cursor-pointer ${statusFilter === "cancelled" ? "bg-[#C6A969] text-zinc-950 shadow-none" : "text-zinc-400 hover:text-white hover:bg-white/5"
                                             }`}
                                     >
                                         Annulés
@@ -1113,10 +1216,11 @@ export function AdminConsole() {
                             </div>
 
                             {/* Main Table */}
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left border-collapse min-w-[760px]">
+                            <div>
+                                {/* Desktop View Table */}
+                                <table className="hidden md:table w-full text-left border-collapse min-w-[760px]">
                                     <thead>
-                                        <tr className="border-b border-zinc-100 dark:border-zinc-800 text-sm font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
+                                        <tr className="border-b border-white/[0.04] text-[10px] font-bold uppercase tracking-wider text-zinc-500">
                                             <th className="pb-3 px-3">Réf</th>
                                             <th className="pb-3 px-3">Date</th>
                                             <th className="pb-3 px-3">Client</th>
@@ -1129,34 +1233,34 @@ export function AdminConsole() {
                                     </thead>
                                     <tbody>
                                         {filteredBookings.map((b) => (
-                                            <tr key={b.id} className="border-b border-zinc-100/60 dark:border-zinc-800/40 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30 transition-colors">
+                                            <tr key={b.id} className="border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors">
                                                 <td className="py-3.5 px-3 font-semibold text-[#C6A969] text-xs whitespace-nowrap">
                                                     {b.id}
                                                 </td>
-                                                <td className="py-3.5 px-3 text-xs font-medium text-zinc-800 dark:text-zinc-200 whitespace-nowrap">
+                                                <td className="py-3.5 px-3 text-xs font-medium text-zinc-300 whitespace-nowrap">
                                                     {b.date}
                                                 </td>
-                                                <td className="py-3.5 px-3 text-xs font-semibold text-zinc-900 dark:text-white whitespace-nowrap">
+                                                <td className="py-3.5 px-3 text-xs font-semibold text-white whitespace-nowrap">
                                                     {b.firstName} {b.lastName}
                                                 </td>
-                                                <td className="py-3.5 px-3 text-xs text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                                                <td className="py-3.5 px-3 text-xs text-zinc-400 whitespace-nowrap">
                                                     {b.phone}
                                                 </td>
-                                                <td className="py-3.5 px-3 text-xs text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                                                <td className="py-3.5 px-3 text-xs text-zinc-400 whitespace-nowrap">
                                                     {eventLabels[b.eventType] || b.eventType}
                                                 </td>
-                                                <td className="py-3.5 px-3 text-right text-xs font-bold text-zinc-900 dark:text-white whitespace-nowrap">
+                                                <td className="py-3.5 px-3 text-right text-xs font-bold text-white whitespace-nowrap">
                                                     {b.price.toLocaleString("fr-TN")} TND
                                                 </td>
                                                 <td className="py-3.5 px-3 text-center whitespace-nowrap">
-                                                    <span className={`px-2.5 py-0.5 rounded-none text-sm font-medium tracking-wide border ${statusColors[b.status]}`}>
+                                                    <span className={`px-2 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-wider border ${statusColors[b.status]}`}>
                                                         {statusLabels[b.status] || b.status}
                                                     </span>
                                                 </td>
                                                 <td className="py-3.5 px-3 text-center whitespace-nowrap">
                                                     <button
                                                         onClick={() => setActiveBookingId(b.id)}
-                                                        className="px-3 py-1.5 border border-zinc-200 dark:border-zinc-800 hover:border-[#C6A969] dark:hover:border-[#C6A969] hover:text-[#C6A969] dark:hover:text-[#C6A969] text-zinc-650 dark:text-zinc-300 text-xs font-semibold transition-all cursor-pointer rounded-none inline-flex items-center gap-1.5 bg-white dark:bg-zinc-900"
+                                                        className="px-3 py-1.5 border border-white/5 hover:border-[#C6A969] hover:text-[#C6A969] text-zinc-400 text-xs font-semibold transition-all cursor-pointer rounded-none inline-flex items-center gap-1.5 bg-white/5"
                                                     >
                                                         <i className="fa-solid fa-eye text-xs"></i> Gérer
                                                     </button>
@@ -1165,6 +1269,48 @@ export function AdminConsole() {
                                         ))}
                                     </tbody>
                                 </table>
+
+                                {/* Mobile View Cards */}
+                                <div className="block md:hidden space-y-4">
+                                    {filteredBookings.map((b) => (
+                                        <div key={b.id} className="border border-zinc-200 dark:border-white/[0.08] bg-white/40 dark:bg-[#0B0B0D]/60 p-4 space-y-3 shadow-sm rounded-none text-left">
+                                            <div className="flex justify-between items-center pb-2 border-b border-zinc-100 dark:border-white/[0.04]">
+                                                <span className="font-semibold text-[#C6A969] text-xs">{b.id}</span>
+                                                <span className={`px-2 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-wider border ${statusColors[b.status]}`}>
+                                                    {statusLabels[b.status] || b.status}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-xs">
+                                                <span className="text-[10px] text-zinc-550 dark:text-zinc-500 font-bold uppercase tracking-wider">Client:</span>
+                                                <span className="font-semibold text-zinc-900 dark:text-white">{b.firstName} {b.lastName}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-xs">
+                                                <span className="text-[10px] text-zinc-555 dark:text-zinc-500 font-bold uppercase tracking-wider">Téléphone:</span>
+                                                <span className="text-zinc-800 dark:text-zinc-200">{b.phone}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-xs">
+                                                <span className="text-[10px] text-zinc-555 dark:text-zinc-500 font-bold uppercase tracking-wider">Date:</span>
+                                                <span className="text-zinc-800 dark:text-zinc-200">{b.date}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-xs">
+                                                <span className="text-[10px] text-zinc-555 dark:text-zinc-500 font-bold uppercase tracking-wider">Événement:</span>
+                                                <span className="text-zinc-800 dark:text-zinc-200">{eventLabels[b.eventType] || b.eventType}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-xs">
+                                                <span className="text-[10px] text-zinc-555 dark:text-zinc-500 font-bold uppercase tracking-wider">Tarif:</span>
+                                                <span className="font-bold text-zinc-900 dark:text-white">{b.price.toLocaleString("fr-TN")} TND</span>
+                                            </div>
+                                            <div className="pt-2 border-t border-zinc-100 dark:border-white/[0.04]">
+                                                <button
+                                                    onClick={() => setActiveBookingId(b.id)}
+                                                    className="w-full py-2 border border-zinc-200 dark:border-zinc-800 hover:border-[#C6A969] dark:hover:border-[#C6A969] hover:text-[#C6A969] dark:hover:text-[#C6A969] text-zinc-650 dark:text-zinc-300 text-xs font-semibold transition-all cursor-pointer rounded-none inline-flex items-center justify-center gap-1.5 bg-white dark:bg-zinc-900"
+                                                >
+                                                    <i className="fa-solid fa-eye text-xs"></i> Gérer
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
 
                                 {filteredBookings.length === 0 && (
                                     <div className="text-center py-16 text-zinc-600 dark:text-zinc-400 text-xs italic font-sans">
@@ -1179,22 +1325,22 @@ export function AdminConsole() {
                     {activeTab === "calendar" && (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
                             {/* Interactive monthly calendar */}
-                            <div className="lg:col-span-2 bg-white/80 dark:bg-[#121214]/80 border border-zinc-200/80 dark:border-zinc-800/80 rounded-none p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] dark:shadow-none space-y-6 transition-all duration-500">
+                            <div className="lg:col-span-2 bg-[#0C0C0E]/60 backdrop-blur-md border border-white/[0.04] p-6 shadow-2xl space-y-6">
                                 <div className="flex items-center justify-between">
-                                    <button onClick={handlePrevMonth} className="w-9 h-9 rounded-none border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-500 hover:text-zinc-850 dark:hover:text-zinc-900 dark:text-white flex items-center justify-center hover:bg-zinc-50 dark:hover:bg-zinc-850 cursor-pointer transition-colors bg-white dark:bg-zinc-900 shadow-none">
+                                    <button onClick={handlePrevMonth} className="w-9 h-9 rounded-none border border-white/5 text-zinc-400 hover:text-white flex items-center justify-center hover:bg-white/5 cursor-pointer transition-colors bg-white/5 shadow-none">
                                         <i className="fa-solid fa-chevron-left text-xs"></i>
                                     </button>
-                                    <h4 className="font-display text-lg font-medium text-zinc-850 dark:text-white">
+                                    <h4 className="font-display text-lg font-medium text-white">
                                         {monthLabel}
                                     </h4>
-                                    <button onClick={handleNextMonth} className="w-9 h-9 rounded-none border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-500 hover:text-zinc-850 dark:hover:text-zinc-900 dark:text-white flex items-center justify-center hover:bg-zinc-50 dark:hover:bg-zinc-850 cursor-pointer transition-colors bg-white dark:bg-zinc-900 shadow-none">
+                                    <button onClick={handleNextMonth} className="w-9 h-9 rounded-none border border-white/5 text-zinc-400 hover:text-white flex items-center justify-center hover:bg-white/5 cursor-pointer transition-colors bg-white/5 shadow-none">
                                         <i className="fa-solid fa-chevron-right text-xs"></i>
                                     </button>
                                 </div>
 
                                 <div className="grid grid-cols-7 gap-2">
                                     {dayNames.map((d) => (
-                                        <div key={d} className="text-center text-sm uppercase tracking-wider text-zinc-600 dark:text-zinc-400 font-bold py-2">
+                                        <div key={d} className="text-center text-[10px] uppercase tracking-wider text-zinc-500 font-bold py-2">
                                             {d}
                                         </div>
                                     ))}
@@ -1205,17 +1351,17 @@ export function AdminConsole() {
                                         const block = blockedDates.find((bd) => bd.date === dateStr);
                                         const isPast = date < today;
 
-                                        let cellStyle = "bg-white dark:bg-[#18181B] text-zinc-700 dark:text-zinc-300 border border-zinc-100 dark:border-zinc-800/80 hover:border-zinc-300 dark:hover:border-zinc-650";
+                                        let cellStyle = "bg-white/[0.02] text-zinc-300 border border-white/5 hover:border-[#C6A969]/30 hover:bg-[#C6A969]/[0.01]";
                                         if (isPast) {
-                                            cellStyle = "bg-zinc-50/50 dark:bg-zinc-905/30 text-zinc-300 dark:text-zinc-600 border border-zinc-100 dark:border-zinc-900/40 cursor-not-allowed opacity-40";
+                                            cellStyle = "bg-white/[0.01] text-zinc-650 border border-white/[0.02] cursor-not-allowed opacity-30";
                                         } else if (booking) {
-                                            cellStyle = "bg-[#C6A969]/10 text-[#C6A969] font-bold border border-[#C6A969]/40";
+                                            cellStyle = "bg-[#C6A969]/10 text-[#C6A969] font-bold border border-[#C6A969]/35 shadow-[inset_0_0_12px_rgba(198,169,105,0.08)]";
                                         } else if (block) {
-                                            cellStyle = "bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/20";
+                                            cellStyle = "bg-red-500/10 text-red-400 font-semibold border border-red-500/20";
                                         }
 
                                         if (selectedBlockDate === dateStr) {
-                                            cellStyle = "bg-zinc-900 dark:bg-white text-zinc-900 dark:text-zinc-950 font-bold border border-zinc-900 dark:border-white shadow-none scale-105";
+                                            cellStyle = "bg-[#C6A969] text-zinc-950 font-bold border border-[#C6A969] shadow-[0_0_15px_rgba(198,169,105,0.25)] scale-105";
                                         }
 
                                         return (
@@ -1228,8 +1374,8 @@ export function AdminConsole() {
                                                 className={`aspect-square rounded-none flex flex-col items-center justify-center transition-all cursor-pointer relative ${cellStyle}`}
                                             >
                                                 <span className="text-sm font-semibold">{date.getDate()}</span>
-                                                {booking && <span className="absolute bottom-2.5 w-1.5 h-1.5 bg-[#C6A969] rounded-none"></span>}
-                                                {block && <span className="absolute bottom-2.5 w-1.5 h-1.5 bg-red-500 rounded-none"></span>}
+                                                {booking && <span className={`absolute bottom-2.5 w-1.5 h-1.5 rounded-none ${selectedBlockDate === dateStr ? 'bg-zinc-950' : 'bg-[#C6A969] drop-shadow-[0_0_4px_rgba(198,169,105,0.8)]'}`}></span>}
+                                                {block && <span className={`absolute bottom-2.5 w-1.5 h-1.5 rounded-none ${selectedBlockDate === dateStr ? 'bg-zinc-950' : 'bg-red-500 drop-shadow-[0_0_4px_rgba(239,68,68,0.8)]'}`}></span>}
                                             </button>
                                         );
                                     })}
@@ -1239,10 +1385,10 @@ export function AdminConsole() {
                             {/* Interactive Side Panel */}
                             <div className="space-y-6">
                                 {selectedBlockDate ? (
-                                    <div className="bg-white/80 dark:bg-[#121214]/80 border border-zinc-200/80 dark:border-zinc-800/80 rounded-none p-6 space-y-4 text-left shadow-[0_2px_8px_rgba(0,0,0,0.01)] dark:shadow-none animate-fade-in transition-all duration-500">
-                                        <div className="flex items-center gap-3 pb-3 border-b border-zinc-100 dark:border-zinc-800">
-                                            <div className="w-1 h-5 bg-[#C6A969] rounded-none" />
-                                            <h3 className="font-display text-base font-medium text-zinc-850 dark:text-white">
+                                    <div className="bg-[#0C0C0E]/60 backdrop-blur-md border border-white/[0.04] p-6 space-y-4 text-left shadow-2xl animate-fade-in">
+                                        <div className="flex items-center gap-3 pb-3 border-b border-white/[0.04]">
+                                            <div className="w-1 h-5 bg-[#C6A969] rounded-none animate-pulse" />
+                                            <h3 className="font-display text-base font-medium text-white">
                                                 Date : {selectedBlockDate}
                                             </h3>
                                         </div>
@@ -1254,15 +1400,15 @@ export function AdminConsole() {
                                             if (booking) {
                                                 return (
                                                     <div className="space-y-4">
-                                                        <div className="p-4 bg-zinc-50 dark:bg-[#1C1C1F] border border-zinc-200 dark:border-zinc-800 rounded-none space-y-2">
-                                                            <span className="text-[9px] font-bold text-zinc-600 dark:text-zinc-400 uppercase block">Réservation</span>
-                                                            <h4 className="text-xs font-bold text-zinc-900 dark:text-white">{booking.firstName} {booking.lastName}</h4>
-                                                            <p className="text-sm text-zinc-500 dark:text-zinc-400">{eventLabels[booking.eventType] || booking.eventType}</p>
+                                                        <div className="p-4 bg-white/[0.02] border border-white/5 rounded-none space-y-2">
+                                                            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Réservation</span>
+                                                            <h4 className="text-xs font-bold text-white">{booking.firstName} {booking.lastName}</h4>
+                                                            <p className="text-xs text-zinc-400">{eventLabels[booking.eventType] || booking.eventType}</p>
                                                             <p className="text-xs font-bold text-[#C6A969]">{booking.price.toLocaleString("fr-TN")} TND</p>
                                                         </div>
                                                         <button
                                                             onClick={() => setActiveBookingId(booking.id)}
-                                                            className="w-full py-2.5 bg-zinc-900 dark:bg-white hover:brightness-110 dark:hover:bg-zinc-100 text-zinc-900 dark:text-zinc-950 text-xs font-semibold rounded-none transition-all cursor-pointer"
+                                                            className="w-full py-2.5 bg-[#C6A969] hover:bg-[#D4B978] text-zinc-950 font-sans text-xs font-bold uppercase tracking-wider transition-all duration-300 rounded-none cursor-pointer flex items-center justify-center gap-1.5"
                                                         >
                                                             Consulter la Fiche
                                                         </button>
@@ -1273,13 +1419,13 @@ export function AdminConsole() {
                                             if (block) {
                                                 return (
                                                     <div className="space-y-4">
-                                                        <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 text-red-800 dark:text-red-400 text-xs rounded-none">
+                                                        <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-none">
                                                             <span className="font-bold block mb-1">Date bloquée manuellement</span>
                                                             Motif : {block.reason}
                                                         </div>
                                                         <button
                                                             onClick={() => handleUnblockDate(selectedBlockDate)}
-                                                            className="w-full py-2.5 border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-zinc-850 text-red-650 dark:text-red-400 text-xs font-semibold rounded-none transition-all cursor-pointer bg-white dark:bg-zinc-900"
+                                                            className="w-full py-2.5 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-450 text-xs font-semibold rounded-none transition-all cursor-pointer"
                                                         >
                                                             Débloquer la date
                                                         </button>
@@ -1289,20 +1435,20 @@ export function AdminConsole() {
 
                                             return (
                                                 <div className="space-y-4">
-                                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 font-sans">Cette date est libre.</p>
+                                                    <p className="text-xs text-zinc-400 font-sans">Cette date est libre.</p>
 
-                                                    <div className="space-y-3 pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                                                        <label className="text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block">Bloquer cette journée</label>
+                                                    <div className="space-y-3 pt-2 border-t border-white/[0.04]">
+                                                        <label className="text-xs font-bold uppercase tracking-wider text-zinc-500 block">Bloquer cette journée</label>
                                                         <input
                                                             type="text"
                                                             placeholder="Motif (Ex: Maintenance, Fermeture...)"
                                                             value={blockReason}
                                                             onChange={(e) => setReason(e.target.value)}
-                                                            className="w-full p-2.5 bg-zinc-50 dark:bg-[#0A0A0C] border border-zinc-200 dark:border-zinc-800 text-zinc-850 dark:text-white text-xs focus:outline-none focus:border-[#C6A969] rounded-none placeholder-zinc-400 dark:placeholder-zinc-650"
+                                                            className="w-full p-2.5 bg-zinc-950/50 border border-white/[0.06] text-white text-xs focus:outline-none focus:border-[#C6A969]/50 rounded-none placeholder-zinc-650"
                                                         />
                                                         <button
                                                             onClick={handleBlockDate}
-                                                            className="w-full py-2.5 bg-red-600 hover:bg-red-500 text-zinc-900 dark:text-white text-xs font-semibold rounded-none transition-all cursor-pointer"
+                                                            className="w-full py-2.5 bg-red-650 hover:bg-red-600 text-white text-xs font-semibold rounded-none transition-all cursor-pointer"
                                                         >
                                                             Confirmer le Blocage
                                                         </button>
@@ -1312,50 +1458,49 @@ export function AdminConsole() {
                                         })()}
                                     </div>
                                 ) : (
-                                    <div className="bg-white/80 dark:bg-[#121214]/80 border border-zinc-200/80 dark:border-zinc-800/80 rounded-none p-6 text-zinc-600 dark:text-zinc-400 text-center text-xs italic font-sans shadow-[0_2px_8px_rgba(0,0,0,0.01)] dark:shadow-none transition-all duration-500">
+                                    <div className="bg-[#0C0C0E]/60 backdrop-blur-md border border-white/[0.04] p-6 text-zinc-500 text-center text-xs italic font-sans shadow-2xl text-left">
                                         Sélectionnez un jour sur le calendrier.
                                     </div>
                                 )}
 
                                 {/* Blocked Dates List */}
-                                <div className="bg-white/80 dark:bg-[#121214]/80 border border-zinc-200/80 dark:border-zinc-800/80 rounded-none p-6 text-left shadow-[0_2px_8px_rgba(0,0,0,0.01)] dark:shadow-none transition-all duration-500">
-                                    <div className="flex items-center gap-3 pb-3 mb-4 border-b border-zinc-100 dark:border-zinc-800">
+                                <div className="bg-[#0C0C0E]/60 backdrop-blur-md border border-white/[0.04] p-6 text-left shadow-2xl">
+                                    <div className="flex items-center gap-3 pb-3 mb-4 border-b border-white/[0.04]">
                                         <div className="w-1 h-5 bg-[#C6A969] rounded-none" />
-                                        <h3 className="font-display text-base font-medium text-zinc-855 dark:text-white">
+                                        <h3 className="font-display text-base font-medium text-white">
                                             Dates bloquées
                                         </h3>
                                     </div>
                                     <div className="space-y-2 max-h-60 overflow-y-auto">
                                         {blockedDates.map((d) => (
-                                            <div key={d.date} className="flex justify-between items-center p-3 bg-zinc-50 dark:bg-[#1B1B1E] border border-zinc-200/60 dark:border-zinc-800/60 text-xs rounded-none">
+                                            <div key={d.date} className="flex justify-between items-center p-3 bg-white/[0.02] border border-white/5 text-xs rounded-none">
                                                 <div>
-                                                    <span className="font-bold text-zinc-700 dark:text-zinc-300 block">{d.date}</span>
-                                                    <span className="text-sm text-zinc-450 dark:text-zinc-500 block">{d.reason}</span>
+                                                    <span className="font-bold text-white block">{d.date}</span>
+                                                    <span className="text-xs text-zinc-550 block">{d.reason}</span>
                                                 </div>
                                                 <button
                                                     onClick={() => handleUnblockDate(d.date)}
-                                                    className="w-7 h-7 border border-zinc-200 dark:border-zinc-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:border-red-300 rounded-none flex items-center justify-center transition-all cursor-pointer bg-white dark:bg-zinc-900"
+                                                    className="w-7 h-7 border border-white/5 text-red-400 hover:bg-red-500/10 hover:border-red-500/20 rounded-none flex items-center justify-center transition-all cursor-pointer bg-white/5"
                                                 >
-                                                    <i className="fa-solid fa-unlock text-sm"></i>
+                                                    <i className="fa-solid fa-unlock text-xs"></i>
                                                 </button>
                                             </div>
                                         ))}
 
                                         {blockedDates.length === 0 && (
-                                            <p className="text-xs text-zinc-600 dark:text-zinc-400 italic font-sans text-center">Aucune date bloquée.</p>
+                                            <p className="text-xs text-zinc-500 italic font-sans text-center">Aucune date bloquée.</p>
                                         )}
                                     </div>
                                 </div>
                             </div>
                         </div>
                     )}
-
                     {/* Tab 4: System Settings View */}
                     {activeTab === "settings" && settingsForm && (
-                        <form onSubmit={handleSaveSettings} className="bg-white/80 dark:bg-[#121214]/80 border border-zinc-200/80 dark:border-zinc-800/80 rounded-none p-6 max-w-3xl text-left space-y-8 shadow-[0_2px_8px_rgba(0,0,0,0.01)] dark:shadow-none animate-fade-in transition-all duration-500">
-                            <div className="flex items-center gap-3 pb-4 border-b border-zinc-100 dark:border-zinc-800">
-                                <div className="w-1 h-6 bg-[#C6A969] rounded-none" />
-                                <h3 className="font-display text-xl font-medium text-zinc-900 dark:text-white">
+                        <form onSubmit={handleSaveSettings} className="bg-[#0C0C0E]/60 backdrop-blur-md border border-white/[0.04] p-6 max-w-3xl text-left space-y-8 shadow-2xl animate-fade-in rounded-none">
+                            <div className="flex items-center gap-3 pb-4 border-b border-white/[0.04]">
+                                <div className="w-1 h-6 bg-[#C6A969] rounded-none animate-pulse" />
+                                <h3 className="font-display text-xl font-semibold text-white">
                                     Configuration de la Salle & Tarifs
                                 </h3>
                             </div>
@@ -1483,38 +1628,38 @@ export function AdminConsole() {
                                 </div>
                             </div>
 
-                            <div className="flex justify-end pt-4 border-t border-black/10 dark:border-white/10">
+                            <div className="flex justify-end pt-4 border-t border-white/[0.04]">
                                 <button type="submit"
-                                    className="px-6 py-2.5 bg-[#C6A969] hover:brightness-110 text-zinc-900 dark:text-white font-sans text-sm font-bold uppercase tracking-wider shadow-none transition-all rounded-none cursor-pointer">
+                                    className="px-6 py-2.5 bg-[#C6A969] hover:bg-[#D4B978] text-zinc-955 font-sans text-xs font-bold uppercase tracking-wider shadow-[0_4px_15px_rgba(198,169,105,0.15)] transition-all duration-300 rounded-none cursor-pointer">
                                     Enregistrer la Configuration
                                 </button>
                             </div>
                         </form>
                     )}
 
-                    {/* Tab 5: Trash View */}
                     {activeTab === "trash" && (
-                        <div className="bg-white dark:bg-[#0F0F11] border border-black/5 dark:border-white/[0.06] rounded-none p-6 shadow-none space-y-6 animate-fade-in transition-all duration-500">
-                            <div className="flex items-center gap-3 pb-3 border-b border-black/10 dark:border-white/10">
-                                <div className="w-1 h-5 bg-red-400 rounded-none" />
-                                <h3 className="font-display text-lg font-medium text-zinc-900 dark:text-white">Corbeille</h3>
+                        <div className="bg-[#0C0C0E]/60 backdrop-blur-md border border-white/[0.04] p-6 space-y-6 animate-fade-in transition-all duration-500 shadow-2xl">
+                            <div className="flex items-center gap-3 pb-3 border-b border-white/[0.04] text-left">
+                                <div className="w-1 h-5 bg-red-500/80 rounded-none animate-pulse" />
+                                <h3 className="font-display text-lg font-medium text-white">Corbeille</h3>
                                 {trashedBookings.length > 0 && (
-                                    <span className="font-sans text-sm text-zinc-500 dark:text-zinc-500 bg-white/[0.04] px-2 py-0.5 rounded-none border border-black/5 dark:border-white/[0.06]">
+                                    <span className="font-sans text-xs text-zinc-400 bg-white/5 px-2.5 py-0.5 rounded-none border border-white/5">
                                         {trashedBookings.length} élément(s)
                                     </span>
                                 )}
                             </div>
 
                             {trashedBookings.length === 0 ? (
-                                <div className="text-center py-16 text-zinc-500 dark:text-zinc-500 text-xs italic font-sans">
-                                    <i className="fa-solid fa-trash-can mb-3 text-2xl text-zinc-600 block"></i>
+                                <div className="text-center py-16 text-zinc-550 text-xs italic font-sans text-left">
+                                    <i className="fa-solid fa-trash-can mb-3 text-2xl text-zinc-700 block"></i>
                                     La corbeille est vide.
                                 </div>
                             ) : (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left border-collapse min-w-[700px]">
+                                <div>
+                                    {/* Desktop View Table */}
+                                    <table className="hidden md:table w-full text-left border-collapse min-w-[700px]">
                                         <thead>
-                                            <tr className="border-b border-black/10 dark:border-white/10 font-sans text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-500">
+                                            <tr className="border-b border-white/[0.04] font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-500">
                                                 <th className="pb-3 px-3">Réf</th>
                                                 <th className="pb-3 px-3">Client</th>
                                                 <th className="pb-3 px-3">Date</th>
@@ -1524,19 +1669,19 @@ export function AdminConsole() {
                                         </thead>
                                         <tbody>
                                             {trashedBookings.map((b) => (
-                                                <tr key={b.id} className="border-b border-black/5 dark:border-white/[0.04] hover:bg-white dark:bg-[#0F0F11] transition-colors">
-                                                    <td className="py-3.5 px-3 font-semibold text-zinc-600 dark:text-zinc-400 text-xs whitespace-nowrap">{b.id}</td>
-                                                    <td className="py-3.5 px-3 text-xs font-semibold text-zinc-900 dark:text-white whitespace-nowrap">{b.firstName} {b.lastName}</td>
-                                                    <td className="py-3.5 px-3 text-xs text-zinc-600 dark:text-zinc-400 whitespace-nowrap">{b.date}</td>
+                                                <tr key={b.id} className="border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors">
+                                                    <td className="py-3.5 px-3 font-semibold text-zinc-450 text-xs whitespace-nowrap">{b.id}</td>
+                                                    <td className="py-3.5 px-3 text-xs font-semibold text-white whitespace-nowrap">{b.firstName} {b.lastName}</td>
+                                                    <td className="py-3.5 px-3 text-xs text-zinc-300 whitespace-nowrap">{b.date}</td>
                                                     <td className="py-3.5 px-3 text-xs font-bold text-zinc-300 whitespace-nowrap">{b.price.toLocaleString("fr-TN")} TND</td>
                                                     <td className="py-3.5 px-3 text-center whitespace-nowrap">
                                                         <div className="flex items-center justify-center gap-2">
                                                             <button onClick={() => handleRestore(b.id)}
-                                                                className="px-3 py-1.5 bg-white/[0.04] hover:bg-emerald-500/20 border border-black/10 dark:border-white/[0.08] hover:border-emerald-500/40 text-zinc-600 dark:text-zinc-400 hover:text-emerald-400 font-sans text-sm font-bold uppercase tracking-wider transition-all rounded-none cursor-pointer flex items-center gap-1.5">
+                                                                className="px-3 py-1.5 bg-white/[0.02] border border-white/5 hover:bg-emerald-500/10 hover:border-emerald-500/20 text-zinc-400 hover:text-emerald-450 font-sans text-[10px] font-bold uppercase tracking-wider transition-all duration-300 rounded-none cursor-pointer flex items-center gap-1.5">
                                                                 <i className="fa-solid fa-rotate-left text-xs"></i> Restaurer
                                                             </button>
                                                             <button onClick={() => handlePermanentDelete(b.id)}
-                                                                className="px-3 py-1.5 bg-white/[0.04] hover:bg-red-500/20 border border-black/10 dark:border-white/[0.08] hover:border-red-500/40 text-zinc-500 dark:text-zinc-500 hover:text-red-400 font-sans text-sm font-bold uppercase tracking-wider transition-all rounded-none cursor-pointer flex items-center gap-1.5">
+                                                                className="px-3 py-1.5 bg-white/[0.02] border border-white/5 hover:bg-red-500/10 hover:border-red-500/20 text-zinc-400 hover:text-red-400 font-sans text-[10px] font-bold uppercase tracking-wider transition-all duration-300 rounded-none cursor-pointer flex items-center gap-1.5">
                                                                 <i className="fa-solid fa-trash-can text-xs"></i> Suppr.
                                                             </button>
                                                         </div>
@@ -1545,6 +1690,40 @@ export function AdminConsole() {
                                             ))}
                                         </tbody>
                                     </table>
+
+                                    {/* Mobile View Cards */}
+                                    <div className="block md:hidden space-y-4">
+                                        {trashedBookings.map((b) => (
+                                            <div key={b.id} className="border border-white/[0.04] bg-[#0C0C0E]/50 p-4 space-y-3 shadow-2xl rounded-none text-left transition-all duration-300 hover:border-[#C6A969]/10">
+                                                <div className="flex justify-between items-center pb-2 border-b border-white/[0.04]">
+                                                    <span className="font-semibold text-zinc-400 text-xs">{b.id}</span>
+                                                    <span className="px-2 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-wider border border-red-500/25 bg-red-500/5 text-red-400">Annulé</span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-xs">
+                                                    <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Client:</span>
+                                                    <span className="font-semibold text-white">{b.firstName} {b.lastName}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-xs">
+                                                    <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Date:</span>
+                                                    <span className="text-zinc-300">{b.date}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-xs">
+                                                    <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Tarif:</span>
+                                                    <span className="font-bold text-white">{b.price.toLocaleString("fr-TN")} TND</span>
+                                                </div>
+                                                <div className="pt-2 border-t border-white/[0.04] flex gap-2">
+                                                    <button onClick={() => handleRestore(b.id)}
+                                                        className="flex-1 py-2 bg-white/[0.02] border border-white/5 hover:bg-emerald-500/10 hover:border-emerald-500/20 text-zinc-400 hover:text-emerald-450 font-sans text-[10px] font-bold uppercase tracking-wider transition-all duration-300 rounded-none cursor-pointer flex items-center justify-center gap-1.5">
+                                                        <i className="fa-solid fa-rotate-left text-xs"></i> Restaurer
+                                                    </button>
+                                                    <button onClick={() => handlePermanentDelete(b.id)}
+                                                        className="flex-1 py-2 bg-white/[0.02] border border-white/5 hover:bg-red-500/10 hover:border-red-500/20 text-zinc-400 hover:text-red-400 font-sans text-[10px] font-bold uppercase tracking-wider transition-all duration-300 rounded-none cursor-pointer flex items-center justify-center gap-1.5">
+                                                        <i className="fa-solid fa-trash-can text-xs"></i> Suppr.
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -1552,133 +1731,133 @@ export function AdminConsole() {
                 </div>
             </main>
             {activeBooking && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 animate-fade-in">
-                    <div className="bg-white dark:bg-[#121214] border border-black/10 dark:border-white/[0.08] rounded-none w-full max-w-xl overflow-hidden shadow-xl flex flex-col max-h-[90vh]">
-                        <div className="p-6 border-b border-black/10 dark:border-white/10 flex justify-between items-center bg-white dark:bg-[#0F0F11]">
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-[#0A0A0C] border-t border-x sm:border border-white/[0.08] fixed inset-x-0 bottom-0 max-h-[90vh] rounded-none w-full translate-y-0 flex flex-col overflow-hidden shadow-2xl sm:relative sm:inset-auto sm:translate-y-0 sm:max-w-xl sm:h-auto">
+                        <div className="p-6 border-b border-white/[0.04] flex justify-between items-center bg-[#0C0C0E]/90">
                             <div className="flex items-center gap-3">
                                 <div className="w-1 h-5 bg-[#C6A969] rounded-none" />
-                                <h3 className="font-display text-lg font-medium text-zinc-900 dark:text-white">
+                                <h3 className="font-display text-lg font-medium text-white">
                                     {isEditing ? "Modifier la Réservation" : "Fiche Client & Réservation"}
                                 </h3>
                             </div>
                             <button onClick={() => { setActiveBookingId(null); setIsEditing(false); }}
-                                className="text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:text-white transition-colors cursor-pointer">
+                                className="text-zinc-500 hover:text-white transition-colors cursor-pointer">
                                 <i className="fa-solid fa-xmark text-lg"></i>
                             </button>
                         </div>
 
                         <form onSubmit={handleSaveEdit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                            <div className="p-6 overflow-y-auto bg-zinc-50 dark:bg-[#121214] flex-1 text-left">
+                            <div className="p-6 overflow-y-auto bg-zinc-950/20 flex-1 text-left">
                                 {isEditing ? (
                                     <div className="grid grid-cols-2 gap-4 font-sans text-xs">
                                         <div className="flex flex-col">
-                                            <label className="font-sans text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-500 block mb-1">Prénom</label>
+                                            <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Prénom</label>
                                             <input type="text" required value={editForm.firstName} onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })} className="input-lux" />
                                         </div>
                                         <div className="flex flex-col">
-                                            <label className="font-sans text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-500 block mb-1">Nom</label>
+                                            <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Nom</label>
                                             <input type="text" required value={editForm.lastName} onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })} className="input-lux" />
                                         </div>
                                         <div className="flex flex-col">
-                                            <label className="font-sans text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-500 block mb-1">Email</label>
+                                            <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Email</label>
                                             <input type="email" required value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} className="input-lux" />
                                         </div>
                                         <div className="flex flex-col">
-                                            <label className="font-sans text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-500 block mb-1">Téléphone</label>
+                                            <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Téléphone</label>
                                             <input type="text" required value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} className="input-lux" />
                                         </div>
                                         <div className="flex flex-col">
-                                            <label className="font-sans text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-500 block mb-1">Date</label>
+                                            <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Date</label>
                                             <input type="text" required value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} className="input-lux" />
                                         </div>
                                         <div className="flex flex-col">
-                                            <label className="font-sans text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-500 block mb-1">Type d'Événement</label>
-                                            <select value={editForm.eventType} onChange={(e) => setEditForm({ ...editForm, eventType: e.target.value as EventTypeSlug })} className="input-lux">
+                                            <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Type d'Événement</label>
+                                            <select value={editForm.eventType} onChange={(e) => setEditForm({ ...editForm, eventType: e.target.value as EventTypeSlug })} className="input-lux bg-[#0C0C0E]">
                                                 <option value="Mariage">Mariage</option><option value="Soirée">Soirée</option><option value="Entreprise">Entreprise</option><option value="Anniversaire">Anniversaire</option><option value="Autre">Autre</option>
                                             </select>
                                         </div>
                                         <div className="flex flex-col">
-                                            <label className="font-sans text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-500 block mb-1">Invités</label>
+                                            <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Invités</label>
                                             <input type="number" required value={editForm.guests} onChange={(e) => setEditForm({ ...editForm, guests: parseInt(e.target.value) || 0 })} className="input-lux" />
                                         </div>
                                         <div className="flex flex-col">
-                                            <label className="font-sans text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-500 block mb-1">Tarif Total (TND)</label>
+                                            <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Tarif Total (TND)</label>
                                             <input type="number" required value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: parseInt(e.target.value) || 0 })} className="input-lux" />
                                         </div>
                                         <div className="flex flex-col">
-                                            <label className="font-sans text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-500 block mb-1">Acompte (TND)</label>
+                                            <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Acompte (TND)</label>
                                             <input type="number" required value={editForm.deposit} onChange={(e) => setEditForm({ ...editForm, deposit: parseInt(e.target.value) || 0 })} className="input-lux" />
                                         </div>
                                         <div className="flex flex-col col-span-2">
-                                            <label className="font-sans text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-500 block mb-1">Notes</label>
+                                            <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Notes</label>
                                             <textarea value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} rows={2} className="input-lux" />
                                         </div>
                                     </div>
                                 ) : (
                                     <div className="space-y-5">
-                                        <div className="grid grid-cols-2 gap-4 text-xs border-b border-black/10 dark:border-white/10 pb-4">
+                                        <div className="grid grid-cols-2 gap-4 text-xs border-b border-white/[0.04] pb-4">
                                             <div>
-                                                <span className="font-sans text-sm text-zinc-500 dark:text-zinc-500 font-bold uppercase block mb-1">Référence</span>
+                                                <span className="font-sans text-[10px] text-zinc-500 font-bold uppercase block mb-1">Référence</span>
                                                 <span className="font-semibold text-[#C6A969]">{activeBooking.id}</span>
                                             </div>
                                             <div>
-                                                <span className="font-sans text-sm text-zinc-500 dark:text-zinc-500 font-bold uppercase block mb-1">Date Sélectionnée</span>
-                                                <span className="font-semibold text-zinc-200">{activeBooking.date}</span>
+                                                <span className="font-sans text-[10px] text-zinc-500 font-bold uppercase block mb-1">Date Sélectionnée</span>
+                                                <span className="font-semibold text-zinc-300">{activeBooking.date}</span>
                                             </div>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-4 text-xs border-b border-black/10 dark:border-white/10 pb-4">
+                                        <div className="grid grid-cols-2 gap-4 text-xs border-b border-white/[0.04] pb-4">
                                             <div>
-                                                <span className="font-sans text-sm text-zinc-500 dark:text-zinc-500 font-bold uppercase block mb-1">Client</span>
-                                                <span className="font-bold text-zinc-900 dark:text-white text-sm">{activeBooking.firstName} {activeBooking.lastName}</span>
+                                                <span className="font-sans text-[10px] text-zinc-500 font-bold uppercase block mb-1">Client</span>
+                                                <span className="font-bold text-white text-sm">{activeBooking.firstName} {activeBooking.lastName}</span>
                                             </div>
                                             <div>
-                                                <span className="font-sans text-sm text-zinc-500 dark:text-zinc-500 font-bold uppercase block mb-1">Type d'Événement</span>
-                                                <span className="font-bold text-zinc-200">{eventLabels[activeBooking.eventType] || activeBooking.eventType}</span>
+                                                <span className="font-sans text-[10px] text-zinc-500 font-bold uppercase block mb-1">Type d'Événement</span>
+                                                <span className="font-bold text-zinc-300">{eventLabels[activeBooking.eventType] || activeBooking.eventType}</span>
                                             </div>
                                             <div>
-                                                <span className="font-sans text-sm text-zinc-500 dark:text-zinc-500 font-bold uppercase block mb-1">Email</span>
+                                                <span className="font-sans text-[10px] text-zinc-500 font-bold uppercase block mb-1">Email</span>
                                                 <span className="text-zinc-300 font-medium">{activeBooking.email}</span>
                                             </div>
                                             <div>
-                                                <span className="font-sans text-sm text-zinc-500 dark:text-zinc-500 font-bold uppercase block mb-1">Téléphone</span>
+                                                <span className="font-sans text-[10px] text-zinc-500 font-bold uppercase block mb-1">Téléphone</span>
                                                 <span className="text-zinc-300 font-medium">{activeBooking.phone}</span>
                                             </div>
                                         </div>
-                                        <div className="flex gap-3 border-b border-black/10 dark:border-white/10 pb-4">
+                                        <div className="flex gap-3 border-b border-white/[0.04] pb-4">
                                             <a href={generateWhatsAppLink(activeBooking.phone, activeBooking.firstName, activeBooking.lastName, activeBooking.date)}
                                                 target="_blank" rel="noopener noreferrer"
-                                                className="flex-1 py-2.5 bg-[#25D366] hover:bg-[#20ba59] text-zinc-900 dark:text-white font-sans text-sm font-bold uppercase tracking-wider text-center inline-flex items-center justify-center gap-2 cursor-pointer rounded-none decoration-none">
+                                                className="flex-1 py-2.5 bg-[#25D366] hover:bg-[#20ba59] text-zinc-950 font-sans text-xs font-bold uppercase tracking-wider text-center inline-flex items-center justify-center gap-2 cursor-pointer rounded-none decoration-none">
                                                 <i className="fa-brands fa-whatsapp text-sm"></i> WhatsApp Client
                                             </a>
                                             <a href={`mailto:${activeBooking.email}?subject=Réservation%20Albatros`}
-                                                className="flex-1 py-2.5 bg-white/[0.04] hover:brightness-110 border border-black/10 dark:border-white/10 text-zinc-300 font-sans text-sm font-bold uppercase tracking-wider text-center inline-flex items-center justify-center gap-2 cursor-pointer rounded-none decoration-none">
+                                                className="flex-1 py-2.5 bg-white/[0.02] hover:bg-white/5 border border-white/5 text-zinc-300 font-sans text-xs font-bold uppercase tracking-wider text-center inline-flex items-center justify-center gap-2 cursor-pointer rounded-none decoration-none transition-all">
                                                 <i className="fa-solid fa-envelope text-sm"></i> Envoyer un Email
                                             </a>
                                         </div>
-                                        <div className="bg-white dark:bg-[#0A0A0C] border border-black/10 dark:border-white/10 p-5 rounded-none text-xs space-y-3">
+                                        <div className="bg-[#0C0C0E]/80 border border-white/5 p-5 rounded-none text-xs space-y-3">
                                             <div className="flex justify-between">
-                                                <span className="text-zinc-500 dark:text-zinc-500 font-medium">Tarif Total :</span>
-                                                <span className="font-bold text-zinc-900 dark:text-white">{activeBooking.price.toLocaleString("fr-TN")} TND</span>
+                                                <span className="text-zinc-500 font-medium">Tarif Total :</span>
+                                                <span className="font-bold text-white">{activeBooking.price.toLocaleString("fr-TN")} TND</span>
                                             </div>
                                             <div className="flex justify-between">
-                                                <span className="text-zinc-500 dark:text-zinc-500 font-medium">Acompte Requis :</span>
+                                                <span className="text-zinc-500 font-medium">Acompte Requis :</span>
                                                 <span className="font-bold text-[#C6A969]">{activeBooking.deposit.toLocaleString("fr-TN")} TND</span>
                                             </div>
-                                            <div className="flex justify-between border-t border-black/10 dark:border-white/10 pt-2 font-bold text-xs">
-                                                <span className="text-zinc-500 dark:text-zinc-500 font-medium">Statut :</span>
+                                            <div className="flex justify-between border-t border-white/[0.04] pt-2 font-bold text-xs">
+                                                <span className="text-zinc-500 font-medium">Statut :</span>
                                                 <span className={`px-2.5 py-0.5 rounded-none text-sm font-semibold border ${statusColors[activeBooking.status]}`}>
                                                     {statusLabels[activeBooking.status] || activeBooking.status}
                                                 </span>
                                             </div>
                                         </div>
                                         {activeBooking.status === "pending" && (
-                                            <div className="p-4 bg-white dark:bg-[#0A0A0C] border border-black/10 dark:border-white/10 rounded-none text-xs space-y-3 text-left">
-                                                <span className="font-bold text-zinc-300 block font-sans text-sm uppercase tracking-wider">Enregistrer un paiement hors-ligne :</span>
+                                            <div className="p-4 bg-white/[0.02] border border-white/5 rounded-none text-xs space-y-3 text-left">
+                                                <span className="font-bold text-zinc-400 block font-sans text-xs uppercase tracking-wider">Enregistrer un paiement hors-ligne :</span>
                                                 <div className="flex gap-2">
-                                                    <button type="button" onClick={async () => { try { await recordManualPayment(activeBooking.id, "cash"); toast.success("Paiement Espèces validé !"); loadData(); } catch (e: any) { toast.error(e.message); } }}
-                                                        className="flex-1 py-2 bg-white/[0.04] hover:brightness-110 border border-black/10 dark:border-white/10 text-zinc-900 dark:text-white text-xs font-semibold rounded-none cursor-pointer">Espèces</button>
-                                                    <button type="button" onClick={async () => { try { await recordManualPayment(activeBooking.id, "cheque"); toast.success("Paiement Chèque validé !"); loadData(); } catch (e: any) { toast.error(e.message); } }}
-                                                        className="flex-1 py-2 bg-white/[0.04] hover:brightness-110 border border-black/10 dark:border-white/10 text-zinc-900 dark:text-white text-xs font-semibold rounded-none cursor-pointer">Chèque</button>
+                                                    <button type="button" onClick={async () => { setIsMutating(true); setBookings(prev => prev.map(b => b.id === activeBooking.id ? { ...b, status: 'confirmed' } : b)); try { await recordManualPayment(activeBooking.id, "cash"); toast.success("Paiement Espèces validé !"); } catch (e: any) { toast.error(e.message); } finally { setIsMutating(false); loadData(); } }}
+                                                        className="flex-1 py-2 bg-white/[0.02] hover:bg-[#C6A969]/10 hover:border-[#C6A969]/20 border border-white/5 text-zinc-300 hover:text-[#C6A969] text-xs font-semibold rounded-none cursor-pointer transition-all duration-300">Espèces</button>
+                                                    <button type="button" onClick={async () => { setIsMutating(true); setBookings(prev => prev.map(b => b.id === activeBooking.id ? { ...b, status: 'confirmed' } : b)); try { await recordManualPayment(activeBooking.id, "cheque"); toast.success("Paiement Chèque validé !"); } catch (e: any) { toast.error(e.message); } finally { setIsMutating(false); loadData(); } }}
+                                                        className="flex-1 py-2 bg-white/[0.02] hover:bg-[#C6A969]/10 hover:border-[#C6A969]/20 border border-white/5 text-zinc-300 hover:text-[#C6A969] text-xs font-semibold rounded-none cursor-pointer transition-all duration-300">Chèque</button>
                                                 </div>
                                             </div>
                                         )}
@@ -1686,11 +1865,11 @@ export function AdminConsole() {
                                 )}
                             </div>
 
-                            <div className="p-6 border-t border-black/10 dark:border-white/10 bg-white dark:bg-[#0F0F11] flex justify-between items-center">
+                            <div className="p-6 border-t border-white/[0.04] bg-[#0C0C0E]/90 flex justify-between items-center">
                                 <div>
                                     {!isEditing && (
                                         <button type="button" onClick={() => handleDelete(activeBooking.id)}
-                                            className="px-4 py-2 border border-red-900/50 text-red-400 hover:bg-red-950/20 hover:border-red-500/50 font-sans text-sm font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors bg-zinc-900">
+                                            className="px-4 py-2 border border-red-500/20 text-red-400 hover:bg-red-500/10 hover:border-red-500/30 font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-all bg-white/[0.02]">
                                             Supprimer
                                         </button>
                                     )}
@@ -1699,21 +1878,21 @@ export function AdminConsole() {
                                     {isEditing ? (
                                         <>
                                             <button type="button" onClick={() => setIsEditing(false)}
-                                                className="px-4 py-2 border border-black/10 dark:border-white/10 hover:bg-white/[0.04] text-zinc-300 font-sans text-sm font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors bg-zinc-900">Annuler</button>
+                                                className="px-4 py-2 border border-white/5 hover:bg-white/5 text-zinc-400 hover:text-white font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-all bg-white/[0.02]">Annuler</button>
                                             <button type="submit"
-                                                className="px-4 py-2 bg-[#C6A969] hover:brightness-110 text-zinc-900 dark:text-white font-sans text-sm font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors shadow-none">Enregistrer</button>
+                                                className="px-4 py-2 bg-[#C6A969] hover:bg-[#D4B978] text-zinc-950 font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-all shadow-[0_4px_15px_rgba(198,169,105,0.15)]">Enregistrer</button>
                                         </>
                                     ) : (
                                         <>
                                             <button type="button" onClick={() => startEditing(activeBooking)}
-                                                className="px-4 py-2 border border-black/10 dark:border-white/10 hover:bg-white/[0.04] text-zinc-300 font-sans text-sm font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors bg-zinc-900">Modifier</button>
+                                                className="px-4 py-2 border border-white/5 hover:bg-white/5 text-zinc-400 hover:text-white font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-all bg-white/[0.02]">Modifier</button>
                                             {(activeBooking.status === "pending" || activeBooking.status === "pending_payment") && (
                                                 <button type="button" onClick={() => handleStatusChange(activeBooking.id, "confirmed")}
-                                                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-zinc-900 dark:text-white font-sans text-sm font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors">Payé</button>
+                                                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors">Payé</button>
                                             )}
                                             {activeBooking.status === "confirmed" && (
                                                 <button type="button" onClick={() => { setRefundTargetId(activeBooking.id); setShowRefundModal(true); }}
-                                                    className="px-4 py-2 bg-red-600 hover:bg-red-500 text-zinc-900 dark:text-white font-sans text-sm font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors">Rembourser</button>
+                                                    className="px-4 py-2 bg-red-650 hover:bg-red-600 text-white font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors">Rembourser</button>
                                             )}
                                         </>
                                     )}
@@ -1726,22 +1905,22 @@ export function AdminConsole() {
 
             {/* Refund Confirmation Modal */}
             {showRefundModal && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 animate-fade-in">
-                    <div className="bg-white dark:bg-[#121214] border border-black/10 dark:border-white/[0.08] rounded-none w-full max-w-md overflow-hidden shadow-xl">
+                <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-[#0A0A0C] border border-white/[0.08] fixed inset-x-0 bottom-0 max-h-[90vh] w-full translate-y-0 flex flex-col overflow-hidden shadow-2xl sm:relative sm:inset-auto sm:translate-y-0 sm:max-w-md sm:rounded-none sm:h-auto">
                         <div className="p-6 text-center space-y-4">
-                            <div className="w-16 h-16 mx-auto rounded-none bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                            <div className="w-16 h-16 mx-auto rounded-none bg-red-500/10 border border-red-500/20 flex items-center justify-center animate-pulse">
                                 <i className="fa-solid fa-triangle-exclamation text-red-400 text-2xl"></i>
                             </div>
-                            <h3 className="font-display text-xl font-medium text-zinc-900 dark:text-white">Confirmer le Remboursement</h3>
-                            <p className="font-sans text-sm text-zinc-600 dark:text-zinc-400">
+                            <h3 className="font-display text-xl font-medium text-white">Confirmer le Remboursement</h3>
+                            <p className="font-sans text-xs text-zinc-400">
                                 Rembourser et annuler cette réservation ?<br />
-                                <span className="text-zinc-500 dark:text-zinc-500">Cette action est irréversible.</span>
+                                <span className="text-red-400/80">Cette action est irréversible.</span>
                             </p>
                             <div className="flex gap-3 pt-2">
                                 <button onClick={() => { setShowRefundModal(false); setRefundTargetId(null); }}
-                                    className="flex-1 py-2.5 border border-black/10 dark:border-white/10 hover:bg-white/[0.04] text-zinc-300 font-sans text-sm font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors">Annuler</button>
+                                    className="flex-1 py-2.5 border border-white/5 hover:bg-white/5 text-zinc-400 hover:text-white font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors bg-white/[0.02]">Annuler</button>
                                 <button onClick={handleRefundConfirm}
-                                    className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-zinc-900 dark:text-white font-sans text-sm font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors">Confirmer le Remboursement</button>
+                                    className="flex-1 py-2.5 bg-red-650 hover:bg-red-600 text-white font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors">Confirmer</button>
                             </div>
                         </div>
                     </div>
@@ -1750,22 +1929,22 @@ export function AdminConsole() {
 
             {/* Delete Confirmation Modal */}
             {showDeleteConfirm && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 animate-fade-in">
-                    <div className="bg-white dark:bg-[#121214] border border-black/10 dark:border-white/[0.08] rounded-none w-full max-w-md overflow-hidden shadow-xl">
+                <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-[#0A0A0C] border border-white/[0.08] fixed inset-x-0 bottom-0 max-h-[90vh] w-full translate-y-0 flex flex-col overflow-hidden shadow-2xl sm:relative sm:inset-auto sm:translate-y-0 sm:max-w-md sm:rounded-none sm:h-auto">
                         <div className="p-6 text-center space-y-4">
-                            <div className="w-16 h-16 mx-auto rounded-none bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                            <div className="w-16 h-16 mx-auto rounded-none bg-amber-500/10 border border-amber-500/20 flex items-center justify-center animate-pulse">
                                 <i className="fa-solid fa-trash-can text-amber-400 text-2xl"></i>
                             </div>
-                            <h3 className="font-display text-xl font-medium text-zinc-900 dark:text-white">Déplacer vers la corbeille ?</h3>
-                            <p className="font-sans text-sm text-zinc-600 dark:text-zinc-400">
+                            <h3 className="font-display text-xl font-medium text-white">Déplacer vers la corbeille ?</h3>
+                            <p className="font-sans text-xs text-zinc-400">
                                 Cette réservation sera déplacée dans la corbeille.<br />
-                                <span className="text-zinc-500 dark:text-zinc-500">Vous pourrez la restaurer plus tard.</span>
+                                <span className="text-zinc-550">Vous pourrez la restaurer plus tard.</span>
                             </p>
                             <div className="flex gap-3 pt-2">
                                 <button onClick={() => { setShowDeleteConfirm(false); setDeleteTargetId(null); }}
-                                    className="flex-1 py-2.5 border border-black/10 dark:border-white/10 hover:bg-white/[0.04] text-zinc-300 font-sans text-sm font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors">Annuler</button>
+                                    className="flex-1 py-2.5 border border-white/5 hover:bg-white/5 text-zinc-400 hover:text-white font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors bg-white/[0.02]">Annuler</button>
                                 <button onClick={handleDeleteConfirm}
-                                    className="flex-1 py-2.5 bg-amber-600 hover:bg-amber-500 text-zinc-900 dark:text-white font-sans text-sm font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors">Confirmer</button>
+                                    className="flex-1 py-2.5 bg-[#C6A969] hover:bg-[#D4B978] text-zinc-950 font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-all shadow-[0_4px_15px_rgba(198,169,105,0.15)]">Confirmer</button>
                             </div>
                         </div>
                     </div>
@@ -1774,21 +1953,21 @@ export function AdminConsole() {
 
             {/* Restore Confirmation Modal */}
             {showRestoreConfirm && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 animate-fade-in">
-                    <div className="bg-white dark:bg-[#121214] border border-black/10 dark:border-white/[0.08] rounded-none w-full max-w-md overflow-hidden shadow-xl">
+                <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-[#0A0A0C] border border-white/[0.08] fixed inset-x-0 bottom-0 max-h-[90vh] w-full translate-y-0 flex flex-col overflow-hidden shadow-2xl sm:relative sm:inset-auto sm:translate-y-0 sm:max-w-md sm:rounded-none sm:h-auto">
                         <div className="p-6 text-center space-y-4">
-                            <div className="w-16 h-16 mx-auto rounded-none bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                            <div className="w-16 h-16 mx-auto rounded-none bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center animate-pulse">
                                 <i className="fa-solid fa-rotate-left text-emerald-400 text-2xl"></i>
                             </div>
-                            <h3 className="font-display text-xl font-medium text-zinc-900 dark:text-white">Restaurer la réservation ?</h3>
-                            <p className="font-sans text-sm text-zinc-600 dark:text-zinc-400">
+                            <h3 className="font-display text-xl font-medium text-white">Restaurer la réservation ?</h3>
+                            <p className="font-sans text-xs text-zinc-400">
                                 Cette réservation sera restaurée et réapparaîtra dans la liste principale.
                             </p>
                             <div className="flex gap-3 pt-2">
                                 <button onClick={() => { setShowRestoreConfirm(false); setRestoreTargetId(null); }}
-                                    className="flex-1 py-2.5 border border-black/10 dark:border-white/10 hover:bg-white/[0.04] text-zinc-300 font-sans text-sm font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors">Annuler</button>
+                                    className="flex-1 py-2.5 border border-white/5 hover:bg-white/5 text-zinc-400 hover:text-white font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors bg-white/[0.02]">Annuler</button>
                                 <button onClick={handleRestoreConfirm}
-                                    className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-zinc-900 dark:text-white font-sans text-sm font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors">Restaurer</button>
+                                    className="flex-1 py-2.5 bg-[#C6A969] hover:bg-[#D4B978] text-zinc-950 font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-all shadow-[0_4px_15px_rgba(198,169,105,0.15)]">Restaurer</button>
                             </div>
                         </div>
                     </div>
@@ -1797,22 +1976,22 @@ export function AdminConsole() {
 
             {/* Permanent Delete Confirmation Modal */}
             {showPermanentDeleteConfirm && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 animate-fade-in">
-                    <div className="bg-white dark:bg-[#121214] border border-black/10 dark:border-white/[0.08] rounded-none w-full max-w-md overflow-hidden shadow-xl">
+                <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-[#0A0A0C] border border-white/[0.08] fixed inset-x-0 bottom-0 max-h-[90vh] w-full translate-y-0 flex flex-col overflow-hidden shadow-2xl sm:relative sm:inset-auto sm:translate-y-0 sm:max-w-md sm:rounded-none sm:h-auto">
                         <div className="p-6 text-center space-y-4">
-                            <div className="w-16 h-16 mx-auto rounded-none bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                            <div className="w-16 h-16 mx-auto rounded-none bg-red-500/10 border border-red-500/20 flex items-center justify-center animate-pulse">
                                 <i className="fa-solid fa-trash-can text-red-400 text-2xl"></i>
                             </div>
-                            <h3 className="font-display text-xl font-medium text-zinc-900 dark:text-white">Supprimer définitivement ?</h3>
-                            <p className="font-sans text-sm text-zinc-600 dark:text-zinc-400">
+                            <h3 className="font-display text-xl font-medium text-white">Supprimer définitivement ?</h3>
+                            <p className="font-sans text-xs text-zinc-400">
                                 Cette réservation sera supprimée définitivement.<br />
-                                <span className="text-red-400">Cette action est irréversible.</span>
+                                <span className="text-red-405 font-bold">Cette action est irréversible.</span>
                             </p>
                             <div className="flex gap-3 pt-2">
                                 <button onClick={() => { setShowPermanentDeleteConfirm(false); setPermanentDeleteTargetId(null); }}
-                                    className="flex-1 py-2.5 border border-black/10 dark:border-white/10 hover:bg-white/[0.04] text-zinc-300 font-sans text-sm font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors">Annuler</button>
+                                    className="flex-1 py-2.5 border border-white/5 hover:bg-white/5 text-zinc-400 hover:text-white font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors bg-white/[0.02]">Annuler</button>
                                 <button onClick={handlePermanentDeleteConfirm}
-                                    className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-zinc-900 dark:text-white font-sans text-sm font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors">Supprimer</button>
+                                    className="flex-1 py-2.5 bg-red-650 hover:bg-red-600 text-white font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors">Supprimer</button>
                             </div>
                         </div>
                     </div>
@@ -1821,79 +2000,79 @@ export function AdminConsole() {
 
             {/* Manual Booking Creation Modal */}
             {showManualModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 animate-fade-in">
-                    <div className="bg-white dark:bg-[#121214] border border-black/10 dark:border-white/[0.08] rounded-none w-full max-w-xl overflow-hidden shadow-xl flex flex-col max-h-[90vh]">
-                        <div className="p-6 border-b border-black/10 dark:border-white/10 flex justify-between items-center bg-white dark:bg-[#0F0F11]">
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-[#0A0A0C] border-t border-x sm:border border-white/[0.08] fixed inset-x-0 bottom-0 max-h-[90vh] rounded-none w-full translate-y-0 flex flex-col overflow-hidden shadow-2xl sm:relative sm:inset-auto sm:translate-y-0 sm:max-w-xl sm:h-auto">
+                        <div className="p-6 border-b border-white/[0.04] flex justify-between items-center bg-[#0C0C0E]/90">
                             <div className="flex items-center gap-3">
-                                <div className="w-1 h-5 bg-[#C6A969] rounded-none" />
-                                <h3 className="font-display text-lg font-medium text-zinc-900 dark:text-white">
+                                <div className="w-1 h-5 bg-[#C6A969] rounded-none animate-pulse" />
+                                <h3 className="font-display text-lg font-medium text-white">
                                     Créer une Réservation Manuelle
                                 </h3>
                             </div>
                             <button onClick={() => setShowManualModal(false)}
-                                className="text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:text-white transition-colors cursor-pointer">
+                                className="text-zinc-500 hover:text-white transition-colors cursor-pointer">
                                 <i className="fa-solid fa-xmark text-lg"></i>
                             </button>
                         </div>
 
                         <form onSubmit={handleCreateManualBooking} className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                            <div className="p-6 overflow-y-auto bg-zinc-50 dark:bg-[#121214] flex-1 text-left space-y-4 font-sans text-xs">
+                            <div className="p-6 overflow-y-auto bg-zinc-950/20 flex-1 text-left space-y-4 font-sans text-xs">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="flex flex-col">
-                                        <label className="font-sans text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-500 mb-1.5">Prénom *</label>
+                                        <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5">Prénom *</label>
                                         <input type="text" required value={manualForm.firstName} onChange={(e) => handleManualFormChange("firstName", e.target.value)}
                                             className="input-lux" placeholder="Youssef" />
                                     </div>
                                     <div className="flex flex-col">
-                                        <label className="font-sans text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-500 mb-1.5">Nom *</label>
+                                        <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5">Nom *</label>
                                         <input type="text" required value={manualForm.lastName} onChange={(e) => handleManualFormChange("lastName", e.target.value)}
                                             className="input-lux" placeholder="Trabelsi" />
                                     </div>
                                     <div className="flex flex-col">
-                                        <label className="font-sans text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-500 mb-1.5">Email *</label>
+                                        <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5">Email *</label>
                                         <input type="email" required value={manualForm.email} onChange={(e) => handleManualFormChange("email", e.target.value)}
                                             className="input-lux" placeholder="client@gmail.com" />
                                     </div>
                                     <div className="flex flex-col">
-                                        <label className="font-sans text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-500 mb-1.5">Téléphone *</label>
+                                        <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5">Téléphone *</label>
                                         <input type="text" required value={manualForm.phone} onChange={(e) => handleManualFormChange("phone", e.target.value)}
                                             className="input-lux" placeholder="98687124" />
                                     </div>
                                     <div className="flex flex-col">
-                                        <label className="font-sans text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-500 mb-1.5">Date (AAAA-MM-JJ) *</label>
+                                        <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5">Date (AAAA-MM-JJ) *</label>
                                         <input type="text" required value={manualForm.date} onChange={(e) => handleManualFormChange("date", e.target.value)}
                                             className="input-lux" placeholder="Ex: 2026-08-15" />
                                     </div>
                                     <div className="flex flex-col">
-                                        <label className="font-sans text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-500 mb-1.5">Type d'Événement *</label>
+                                        <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5">Type d'Événement *</label>
                                         <select value={manualForm.eventType} onChange={(e) => handleManualFormChange("eventType", e.target.value)}
-                                            className="input-lux">
+                                            className="input-lux bg-[#0C0C0E]">
                                             <option value="Mariage">Mariage</option><option value="Soirée">Soirée</option><option value="Entreprise">Entreprise</option><option value="Anniversaire">Anniversaire</option><option value="Autre">Autre</option>
                                         </select>
                                     </div>
                                     <div className="flex flex-col">
-                                        <label className="font-sans text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-500 mb-1.5">Invités *</label>
+                                        <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5">Invités *</label>
                                         <input type="number" required value={manualForm.guests} onChange={(e) => handleManualFormChange("guests", parseInt(e.target.value) || 0)}
                                             className="input-lux" />
                                     </div>
                                     <div className="flex flex-col">
-                                        <label className="font-sans text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-500 mb-1.5">Tarif Total (TND)</label>
+                                        <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5">Tarif Total (TND)</label>
                                         <input type="number" disabled value={manualForm.price}
-                                            className="input-lux px-3 py-2 opacity-60 cursor-not-allowed" />
+                                            className="input-lux px-3 py-2 opacity-50 cursor-not-allowed" />
                                     </div>
                                     <div className="flex flex-col col-span-2">
-                                        <label className="font-sans text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-500 mb-1.5">Notes ou consignes</label>
+                                        <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5">Notes ou consignes</label>
                                         <textarea value={manualForm.notes} onChange={(e) => handleManualFormChange("notes", e.target.value)} rows={2}
                                             className="input-lux" />
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="p-6 border-t border-black/10 dark:border-white/10 bg-white dark:bg-[#0F0F11] flex justify-end gap-3 font-sans text-sm font-bold uppercase tracking-wider">
+                            <div className="p-6 border-t border-white/[0.04] bg-[#0C0C0E]/90 flex justify-end gap-3 font-sans text-xs font-bold uppercase tracking-wider">
                                 <button type="button" onClick={() => setShowManualModal(false)}
-                                    className="px-4 py-2 border border-black/10 dark:border-white/10 hover:bg-white/[0.04] text-zinc-300 rounded-none cursor-pointer transition-colors bg-zinc-900">Annuler</button>
+                                    className="px-4 py-2.5 border border-white/5 hover:bg-white/5 text-zinc-400 hover:text-white rounded-none cursor-pointer transition-colors bg-white/[0.02]">Annuler</button>
                                 <button type="submit"
-                                    className="px-5 py-2 bg-[#C6A969] hover:brightness-110 text-zinc-900 dark:text-white rounded-none cursor-pointer transition-all shadow-none">Créer la Réservation</button>
+                                    className="px-5 py-2.5 bg-[#C6A969] hover:bg-[#D4B978] text-zinc-950 rounded-none cursor-pointer transition-all shadow-[0_4px_15px_rgba(198,169,105,0.15)]">Créer la Réservation</button>
                             </div>
                         </form>
                     </div>
@@ -1903,36 +2082,22 @@ export function AdminConsole() {
     );
 }
 
-// Dock Tab Button Component
-function DockTabButton({ icon, label, active, onClick }: { icon: string; label: string; active: boolean; onClick: () => void }) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className={`px-4 py-2 flex items-center gap-2 font-sans text-sm font-bold uppercase tracking-wider rounded-none transition-all cursor-pointer select-none border ${active
-                    ? "bg-[#C6A969] text-zinc-900 dark:text-white shadow-[0_4px_15px_rgba(198,169,105,0.25)] border-[#C6A969]"
-                    : "text-zinc-500 dark:text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.04] border-transparent"
-                }`}
-        >
-            <i className={`fa-solid ${icon} text-sm`}></i>
-            <span className="hidden sm:inline">{label}</span>
-        </button>
-    );
-}
-
 // Stats Card View Component
 function StatCard({ icon, label, value, isGold }: { icon: string; label: string; value: any; isGold?: boolean }) {
     return (
-        <div className="group bg-white dark:bg-[#0F0F11] border border-black/5 dark:border-white/[0.06] p-5 flex items-center gap-4 text-left rounded-none shadow-none transition-all duration-500 hover:shadow-[0_20px_40px_rgba(0,0,0,0.3)] hover:-translate-y-0.5 card-hover-lift">
-            <div className={`w-10 h-10 rounded-none flex items-center justify-center text-md transition-all duration-300 group-hover:scale-110 ${isGold ? "bg-amber-500/10 text-[#C6A969] border border-[#C6A969]/20" : "bg-white/[0.04] text-zinc-600 dark:text-zinc-400 border border-black/10 dark:border-white/10"
+        <div className="group relative bg-[#0C0C0E]/60 backdrop-blur-md border border-white/[0.04] p-6 flex items-center gap-5 text-left rounded-none transition-all duration-500 hover:border-[#C6A969]/30 hover:bg-[#C6A969]/[0.01] hover:-translate-y-1 overflow-hidden shadow-2xl">
+            {/* Top gold line highlight on hover */}
+            <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-[#C6A969] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            
+            <div className={`w-12 h-12 rounded-none flex items-center justify-center text-lg transition-all duration-500 group-hover:scale-105 ${isGold ? "bg-[#C6A969]/10 text-[#C6A969] border border-[#C6A969]/25 drop-shadow-[0_0_8px_rgba(198,169,105,0.2)]" : "bg-white/5 text-zinc-400 border border-white/5"
                 }`}>
                 <i className={`fa-solid ${icon}`}></i>
             </div>
             <div>
-                <span className="font-sans text-sm font-bold uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-500 block mb-0.5">
+                <span className="font-sans text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-550 block">
                     {label}
                 </span>
-                <h3 className={`font-display text-2xl font-medium leading-tight ${isGold ? "text-[#C6A969]" : "text-zinc-900 dark:text-white"}`}>
+                <h3 className={`font-display text-2xl font-semibold leading-tight mt-1 tracking-tight ${isGold ? "text-[#C6A969] drop-shadow-[0_0_8px_rgba(198,169,105,0.15)]" : "text-white"}`}>
                     {value}
                 </h3>
             </div>

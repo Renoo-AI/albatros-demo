@@ -93,44 +93,22 @@ const fileMutex = new Mutex();
 
 // Helper to read local bookings asynchronously
 async function readLocalBookings(): Promise<any[]> {
-  if (!fs.existsSync(BOOKINGS_FILE)) {
-    try {
-      await fs.promises.writeFile(BOOKINGS_FILE, JSON.stringify([], null, 2));
-    } catch {}
-    return [];
-  }
-  try {
-    const data = await fs.promises.readFile(BOOKINGS_FILE, "utf-8");
-    return JSON.parse(data);
-  } catch (e) {
-    return [];
-  }
+  throw new Error("Supabase integration is required. Local fallback is disabled.");
 }
 
 // Helper to write local bookings asynchronously
 async function writeLocalBookings(bookings: any[]): Promise<void> {
-  await fs.promises.writeFile(BOOKINGS_FILE, JSON.stringify(bookings, null, 2));
+  throw new Error("Supabase integration is required. Local fallback is disabled.");
 }
 
 // Helper to read local blocked dates asynchronously
 async function readLocalBlocked(): Promise<any[]> {
-  if (!fs.existsSync(BLOCKED_FILE)) {
-    try {
-      await fs.promises.writeFile(BLOCKED_FILE, JSON.stringify([], null, 2));
-    } catch {}
-    return [];
-  }
-  try {
-    const data = await fs.promises.readFile(BLOCKED_FILE, "utf-8");
-    return JSON.parse(data);
-  } catch (e) {
-    return [];
-  }
+  throw new Error("Supabase integration is required. Local fallback is disabled.");
 }
 
 // Helper to write local blocked dates asynchronously
 async function writeLocalBlocked(dates: any[]): Promise<void> {
-  await fs.promises.writeFile(BLOCKED_FILE, JSON.stringify(dates, null, 2));
+  throw new Error("Supabase integration is required. Local fallback is disabled.");
 }
 
 const DEFAULT_SETTINGS = {
@@ -164,22 +142,11 @@ const DEFAULT_SETTINGS = {
 };
 
 async function readLocalSettings(): Promise<any> {
-  if (!fs.existsSync(SETTINGS_FILE)) {
-    try {
-      await fs.promises.writeFile(SETTINGS_FILE, JSON.stringify(DEFAULT_SETTINGS, null, 2));
-    } catch {}
-    return DEFAULT_SETTINGS;
-  }
-  try {
-    const data = await fs.promises.readFile(SETTINGS_FILE, "utf-8");
-    return JSON.parse(data);
-  } catch (e) {
-    return DEFAULT_SETTINGS;
-  }
+  throw new Error("Supabase integration is required. Local fallback is disabled.");
 }
 
 async function writeLocalSettings(settings: any): Promise<void> {
-  await fs.promises.writeFile(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+  throw new Error("Supabase integration is required. Local fallback is disabled.");
 }
 
 // Lazy SDK Initializers
@@ -291,16 +258,14 @@ async function detectSupabaseColumns() {
 
 async function verifyGatewayPayment(refId: string): Promise<boolean> {
   const supabase = getSupabaseAdmin() || getSupabase();
+  if (!supabase) {
+    throw new Error("Supabase integration is required. Local fallback is disabled.");
+  }
   let booking: any = null;
 
-  if (supabase) {
-    const { data, error } = await supabase.from("bookings").select("*").eq("booking_ref", refId).single();
-    if (!error && data) {
-      booking = data;
-    }
-  } else {
-    const bookings = await readLocalBookings();
-    booking = bookings.find((b) => b.id === refId);
+  const { data, error } = await supabase.from("bookings").select("*").eq("booking_ref", refId).single();
+  if (!error && data) {
+    booking = data;
   }
 
   if (!booking) {
@@ -379,27 +344,17 @@ async function verifyGatewayPayment(refId: string): Promise<boolean> {
 
   if (isPaid && booking.status !== 'confirmed') {
     console.log(`Payment confirmed for booking ${refId}. Updating database.`);
-    if (supabase) {
-      const updates: any = {
-        status: 'confirmed',
-        paid_at: new Date().toISOString(),
-        gateway_status: 'captured'
-      };
-      const filtered: any = { status: 'confirmed', paid_at: updates.paid_at };
-      if (supabaseColumns.includes('gateway_status')) filtered.gateway_status = 'captured';
+    const updates: any = {
+      status: 'confirmed',
+      paid_at: new Date().toISOString(),
+      gateway_status: 'captured'
+    };
+    const filtered: any = { status: 'confirmed', paid_at: updates.paid_at };
+    if (supabaseColumns.includes('gateway_status')) filtered.gateway_status = 'captured';
 
-      await supabase.from("bookings").update(filtered).eq("booking_ref", refId);
-    } else {
-      await fileMutex.runExclusive(async () => {
-        const bookings = await readLocalBookings();
-        const match = bookings.find((b) => b.id === refId);
-        if (match) {
-          match.status = 'confirmed';
-          match.paid_at = new Date().toISOString();
-          match.gateway_status = 'captured';
-          await writeLocalBookings(bookings);
-        }
-      });
+    const { error: updateErr } = await supabase.from("bookings").update(filtered).eq("booking_ref", refId);
+    if (updateErr) {
+      throw new Error(`Failed to update booking status in database: ${updateErr.message}`);
     }
     return true;
   }
@@ -475,27 +430,20 @@ async function startServer() {
 
       if (refId) {
         console.log(`Payment succeeded for booking reference ${refId}`);
-        // Update database (Supabase or Local)
+        // Update database (Supabase only)
         const supabase = getSupabaseAdmin(); // Use admin client for database writes
-        if (supabase) {
-          const updates: any = { status: "confirmed", paid_at: new Date().toISOString(), stripe_payment_intent_id: session.payment_intent };
-          if (supabaseColumns.includes('gateway_status')) updates.gateway_status = 'captured';
-          if (supabaseColumns.includes('gateway_reference')) updates.gateway_reference = session.payment_intent;
-          await supabase
-            .from("bookings")
-            .update(updates)
-            .eq("booking_ref", refId);
-        } else {
-          await fileMutex.runExclusive(async () => {
-            const bookings = await readLocalBookings();
-            const match = bookings.find((b) => b.id === refId);
-            if (match) {
-              match.status = "confirmed";
-              match.paid_at = new Date().toISOString();
-              match.gateway_status = "captured";
-              await writeLocalBookings(bookings);
-            }
-          });
+        if (!supabase) {
+          throw new Error("Supabase integration is required. Local fallback is disabled.");
+        }
+        const updates: any = { status: "confirmed", paid_at: new Date().toISOString(), stripe_payment_intent_id: session.payment_intent };
+        if (supabaseColumns.includes('gateway_status')) updates.gateway_status = 'captured';
+        if (supabaseColumns.includes('gateway_reference')) updates.gateway_reference = session.payment_intent;
+        const { error } = await supabase
+          .from("bookings")
+          .update(updates)
+          .eq("booking_ref", refId);
+        if (error) {
+          throw new Error(`Failed to update booking status in webhook: ${error.message}`);
         }
       }
     }
@@ -522,39 +470,38 @@ async function startServer() {
   // Endpoint: Get business settings
   app.get("/api/settings", async (req, res) => {
     const supabase = getSupabase();
-    if (supabase) {
-      const { data, error } = await supabase.from("business_settings").select("*").single();
-      if (!error && data) {
-        return res.json(data);
-      }
+    if (!supabase) {
+      return res.status(500).json({ error: "Supabase integration is required. Local fallback is disabled." });
     }
-
-    res.json(await readLocalSettings());
+    const { data, error } = await supabase.from("business_settings").select("*").single();
+    if (error || !data) {
+      return res.status(500).json({ error: error?.message || "Failed to load settings from database." });
+    }
+    res.json(data);
   });
 
   // Endpoint: Get booked & blocked dates (Privacy-preserving, queries public view to protect GDPR data)
   app.get("/api/availability", async (req, res) => {
     const supabase = getSupabase();
+    if (!supabase) {
+      return res.status(500).json({ error: "Supabase integration is required. Local fallback is disabled." });
+    }
     let bookedDates: string[] = [];
     let blockedDates: string[] = [];
 
-    if (supabase) {
-      const { data: bData } = await supabase
-        .from("booking_availability")
-        .select("event_date");
-      const { data: blData } = await supabase
-        .from("blocked_dates")
-        .select("blocked_date");
+    const { data: bData, error: bErr } = await supabase
+      .from("booking_availability")
+      .select("event_date");
+    const { data: blData, error: blErr } = await supabase
+      .from("blocked_dates")
+      .select("blocked_date");
 
-      bookedDates = (bData || []).map((b) => b.event_date);
-      blockedDates = (blData || []).map((b) => b.blocked_date);
-    } else {
-      const localBookings = await readLocalBookings();
-      const localBlocked = await readLocalBlocked();
-
-      bookedDates = localBookings.filter((b) => b.status !== "cancelled").map((b) => b.date);
-      blockedDates = localBlocked.map((b) => b.date);
+    if (bErr || blErr) {
+      return res.status(500).json({ error: "Database error fetching availability." });
     }
+
+    bookedDates = (bData || []).map((b) => b.event_date);
+    blockedDates = (blData || []).map((b) => b.blocked_date);
 
     const allBlocked = Array.from(new Set([...bookedDates, ...blockedDates]));
     res.json(allBlocked.map((date) => ({ event_date: date, is_blocked: true })));
@@ -644,14 +591,13 @@ async function startServer() {
       return res.status(400).json({ error: "Invalid date: You cannot book a date in the past." });
     }
 
-    let dbSettings = null;
     const supabaseSettings = getSupabase();
-    if (supabaseSettings) {
-      const { data } = await supabaseSettings.from("business_settings").select("*").single();
-      dbSettings = data;
+    if (!supabaseSettings) {
+      return res.status(500).json({ error: "Supabase integration is required. Local fallback is disabled." });
     }
-    if (!dbSettings) {
-      dbSettings = await readLocalSettings();
+    const { data: dbSettings, error: dbSettingsErr } = await supabaseSettings.from("business_settings").select("*").single();
+    if (dbSettingsErr || !dbSettings) {
+      return res.status(500).json({ error: "Configuration de la salle introuvable." });
     }
 
     const eventPrices = dbSettings?.event_prices || {
@@ -852,11 +798,7 @@ async function startServer() {
         return res.status(500).json({ error: "Erreur de base de données." });
       }
     } else {
-      await fileMutex.runExclusive(async () => {
-        const bookings = await readLocalBookings();
-        bookings.push(newBooking);
-        await writeLocalBookings(bookings);
-      });
+      return res.status(500).json({ error: "Supabase integration is required. Local fallback is disabled." });
     }
 
     res.json({ ref, success: true, paymentUrl });
@@ -896,15 +838,12 @@ async function startServer() {
     if (paymentRef) {
       const safeRef = xss(String(paymentRef));
       const supabase = getSupabaseAdmin();
-      let bookingRef = null;
-      if (supabase) {
-        const { data } = await supabase.from("bookings").select("booking_ref").eq("gateway_reference", safeRef).single();
-        if (data) bookingRef = data.booking_ref;
-      } else {
-        const bookings = await readLocalBookings();
-        const match = bookings.find((b) => b.gateway_reference === safeRef || b.flouci_transaction_reference === safeRef);
-        if (match) bookingRef = match.id;
+      if (!supabase) {
+        throw new Error("Supabase integration is required. Local fallback is disabled.");
       }
+      let bookingRef = null;
+      const { data } = await supabase.from("bookings").select("booking_ref").eq("gateway_reference", safeRef).single();
+      if (data) bookingRef = data.booking_ref;
       if (bookingRef) {
         await verifyGatewayPayment(bookingRef);
       }
@@ -1003,13 +942,12 @@ async function startServer() {
     const safeId = xss(String(id));
 
     const supabase = getSupabaseAdmin() || getSupabase();
-    let booking: any = null;
-    if (supabase) {
-      const { data } = await supabase.from("bookings").select("*").eq("booking_ref", safeId).single();
-      booking = data;
-    } else {
-      const bookings = await readLocalBookings();
-      booking = bookings.find((b) => b.id === safeId);
+    if (!supabase) {
+      return res.status(500).json({ error: "Supabase integration is required. Local fallback is disabled." });
+    }
+    const { data: booking, error: selectErr } = await supabase.from("bookings").select("*").eq("booking_ref", safeId).single();
+    if (selectErr || !booking) {
+      return res.status(404).json({ error: "Réservation non trouvée" });
     }
 
     if (!booking) {
@@ -1073,21 +1011,11 @@ async function startServer() {
     }
 
     if (refundSuccess) {
-      if (supabase) {
-        const updates: any = { status: 'cancelled', gateway_status: 'refunded' };
-        const filtered: any = { status: 'cancelled' };
-        if (supabaseColumns.includes('gateway_status')) filtered.gateway_status = 'refunded';
-        await supabase.from("bookings").update(filtered).eq("booking_ref", safeId);
-      } else {
-        await fileMutex.runExclusive(async () => {
-          const bookings = await readLocalBookings();
-          const match = bookings.find((b) => b.id === safeId);
-          if (match) {
-            match.status = 'cancelled';
-            match.gateway_status = 'refunded';
-            await writeLocalBookings(bookings);
-          }
-        });
+      const filtered: any = { status: 'cancelled' };
+      if (supabaseColumns.includes('gateway_status')) filtered.gateway_status = 'refunded';
+      const { error: updateErr } = await supabase.from("bookings").update(filtered).eq("booking_ref", safeId);
+      if (updateErr) {
+        return res.status(500).json({ error: `Failed to cancel booking in database: ${updateErr.message}` });
       }
       return res.json({ success: true });
     } else {
@@ -1104,30 +1032,22 @@ async function startServer() {
     const safeMethod = xss(String(method));
 
     const supabase = getSupabaseAdmin() || getSupabase();
-    if (supabase) {
-      const updates: any = {
-        status: 'confirmed',
-        paid_at: new Date().toISOString(),
-        payment_gateway: safeMethod,
-        gateway_status: 'captured'
-      };
-      const filtered: any = { status: 'confirmed', paid_at: updates.paid_at };
-      if (supabaseColumns.includes('payment_gateway')) filtered.payment_gateway = safeMethod;
-      if (supabaseColumns.includes('gateway_status')) filtered.gateway_status = 'captured';
+    if (!supabase) {
+      return res.status(500).json({ error: "Supabase integration is required. Local fallback is disabled." });
+    }
+    const updates: any = {
+      status: 'confirmed',
+      paid_at: new Date().toISOString(),
+      payment_gateway: safeMethod,
+      gateway_status: 'captured'
+    };
+    const filtered: any = { status: 'confirmed', paid_at: updates.paid_at };
+    if (supabaseColumns.includes('payment_gateway')) filtered.payment_gateway = safeMethod;
+    if (supabaseColumns.includes('gateway_status')) filtered.gateway_status = 'captured';
 
-      await supabase.from("bookings").update(filtered).eq("booking_ref", safeId);
-    } else {
-      await fileMutex.runExclusive(async () => {
-        const bookings = await readLocalBookings();
-        const match = bookings.find((b) => b.id === safeId);
-        if (match) {
-          match.status = 'confirmed';
-          match.paid_at = new Date().toISOString();
-          match.payment_gateway = safeMethod;
-          match.gateway_status = 'captured';
-          await writeLocalBookings(bookings);
-        }
-      });
+    const { error: updateErr } = await supabase.from("bookings").update(filtered).eq("booking_ref", safeId);
+    if (updateErr) {
+      return res.status(500).json({ error: `Failed to update status in database: ${updateErr.message}` });
     }
 
     res.json({ success: true });
@@ -1135,50 +1055,51 @@ async function startServer() {
 
   app.get("/api/admin/bookings", async (req, res) => {
     const supabase = getSupabaseAdmin() || getSupabase();
-    if (supabase) {
-      const { data, error } = await supabase.from("bookings").select("*").order("created_at", { ascending: false });
-      if (!error && data) {
-        const mapped = data.map((b) => {
-          const names = (b.customer_name || "").split(" ");
-          return {
-            id: b.booking_ref,
-            firstName: names[0] || "",
-            lastName: names.slice(1).join(" ") || "",
-            phone: b.customer_phone,
-            email: b.customer_email,
-            date: b.event_date,
-            eventType: b.event_type || "wedding",
-            guests: b.guest_count,
-            notes: b.notes,
-            status: b.status,
-            price: b.total_price,
-            deposit: b.deposit_amount,
-            balance: b.balance_amount,
-            stripe_payment_intent_id: b.stripe_payment_intent_id,
-            payment_gateway: b.payment_gateway || (b.stripe_payment_intent_id ? 'stripe' : 'flouci'),
-            gateway_reference: b.gateway_reference || b.stripe_payment_intent_id || b.flouci_transaction_reference,
-            gateway_status: b.gateway_status || 'pending',
-            flouci_payment_url: b.flouci_payment_url,
-            deletedAt: b.deleted_at || undefined,
-            createdAt: b.created_at
-          };
-        });
-        return res.json(mapped);
-      }
+    if (!supabase) {
+      return res.status(500).json({ error: "Supabase integration is required. Local fallback is disabled." });
     }
-
-    res.json(await readLocalBookings());
+    const { data, error } = await supabase.from("bookings").select("*").order("created_at", { ascending: false });
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+    const mapped = (data || []).map((b) => {
+      const names = (b.customer_name || "").split(" ");
+      return {
+        id: b.booking_ref,
+        firstName: names[0] || "",
+        lastName: names.slice(1).join(" ") || "",
+        phone: b.customer_phone,
+        email: b.customer_email,
+        date: b.event_date,
+        eventType: b.event_type || "wedding",
+        guests: b.guest_count,
+        notes: b.notes,
+        status: b.status,
+        price: b.total_price,
+        deposit: b.deposit_amount,
+        balance: b.balance_amount,
+        stripe_payment_intent_id: b.stripe_payment_intent_id,
+        payment_gateway: b.payment_gateway || (b.stripe_payment_intent_id ? 'stripe' : 'flouci'),
+        gateway_reference: b.gateway_reference || b.stripe_payment_intent_id || b.flouci_transaction_reference,
+        gateway_status: b.gateway_status || 'pending',
+        flouci_payment_url: b.flouci_payment_url,
+        deletedAt: b.deleted_at || undefined,
+        createdAt: b.created_at
+      };
+    });
+    return res.json(mapped);
   });
 
   app.get("/api/admin/blocked", async (req, res) => {
     const supabase = getSupabaseAdmin() || getSupabase();
-    if (supabase) {
-      const { data, error } = await supabase.from("blocked_dates").select("*");
-      if (!error && data) {
-        return res.json(data.map((d) => ({ date: d.blocked_date, reason: d.reason })));
-      }
+    if (!supabase) {
+      return res.status(500).json({ error: "Supabase integration is required. Local fallback is disabled." });
     }
-    res.json(await readLocalBlocked());
+    const { data, error } = await supabase.from("blocked_dates").select("*");
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+    return res.json((data || []).map((d) => ({ date: d.blocked_date, reason: d.reason })));
   });
 
   app.post("/api/admin/block-date", async (req, res) => {
@@ -1188,20 +1109,13 @@ async function startServer() {
     const safeReason = xss(String(reason || "Fermeture manuelle"));
 
     const supabase = getSupabaseAdmin() || getSupabase();
-    if (supabase) {
-      const { error } = await supabase.from("blocked_dates").insert({ blocked_date: safeDate, reason: safeReason });
-      if (error && error.code !== '23505') { // 23505 is unique violation in Postgres
-        console.error("Supabase block-date error:", error);
-        return res.status(500).json({ error: error.message });
-      }
-    } else {
-      await fileMutex.runExclusive(async () => {
-        const blocked = await readLocalBlocked();
-        if (!blocked.some((b) => b.date === safeDate)) {
-          blocked.push({ date: safeDate, reason: safeReason });
-          await writeLocalBlocked(blocked);
-        }
-      });
+    if (!supabase) {
+      return res.status(500).json({ error: "Supabase integration is required. Local fallback is disabled." });
+    }
+    const { error } = await supabase.from("blocked_dates").insert({ blocked_date: safeDate, reason: safeReason });
+    if (error && error.code !== '23505') { // 23505 is unique violation in Postgres
+      console.error("Supabase block-date error:", error);
+      return res.status(500).json({ error: error.message });
     }
 
     res.json({ success: true });
@@ -1213,14 +1127,12 @@ async function startServer() {
     const safeDate = xss(String(date));
 
     const supabase = getSupabaseAdmin() || getSupabase();
-    if (supabase) {
-      await supabase.from("blocked_dates").delete().eq("blocked_date", safeDate);
-    } else {
-      await fileMutex.runExclusive(async () => {
-        let blocked = await readLocalBlocked();
-        blocked = blocked.filter((b) => b.date !== safeDate);
-        await writeLocalBlocked(blocked);
-      });
+    if (!supabase) {
+      return res.status(500).json({ error: "Supabase integration is required. Local fallback is disabled." });
+    }
+    const { error } = await supabase.from("blocked_dates").delete().eq("blocked_date", safeDate);
+    if (error) {
+      return res.status(500).json({ error: error.message });
     }
 
     res.json({ success: true });
@@ -1233,34 +1145,20 @@ async function startServer() {
     const safeStatus = xss(String(status));
 
     const supabase = getSupabaseAdmin() || getSupabase();
-    let paymentIntentId = null;
-    let paymentMethod = 'stripe';
-
-    let booking: any = null;
-    if (supabase) {
-      const { data } = await supabase.from("bookings").select("*").eq("booking_ref", safeId).single();
-      booking = data;
-    } else {
-      const bookings = await readLocalBookings();
-      booking = bookings.find((b) => b.id === safeId);
+    if (!supabase) {
+      return res.status(500).json({ error: "Supabase integration is required. Local fallback is disabled." });
+    }
+    const { data: booking, error: selectErr } = await supabase.from("bookings").select("*").eq("booking_ref", safeId).single();
+    if (selectErr || !booking) {
+      return res.status(404).json({ error: "Réservation non trouvée" });
     }
 
-    if (booking) {
-      paymentIntentId = booking.gateway_reference || booking.stripe_payment_intent_id || booking.flouci_transaction_reference;
-      paymentMethod = booking.payment_gateway || (booking.stripe_payment_intent_id ? 'stripe' : 'flouci');
-    }
+    let paymentIntentId = booking.gateway_reference || booking.stripe_payment_intent_id || booking.flouci_transaction_reference;
+    let paymentMethod = booking.payment_gateway || (booking.stripe_payment_intent_id ? 'stripe' : 'flouci');
 
-    if (supabase) {
-      await supabase.from("bookings").update({ status: safeStatus }).eq("booking_ref", safeId);
-    } else {
-      await fileMutex.runExclusive(async () => {
-        const bookings = await readLocalBookings();
-        const match = bookings.find((b) => b.id === safeId);
-        if (match) {
-          match.status = safeStatus;
-          await writeLocalBookings(bookings);
-        }
-      });
+    const { error: updateErr } = await supabase.from("bookings").update({ status: safeStatus }).eq("booking_ref", safeId);
+    if (updateErr) {
+      return res.status(500).json({ error: `Failed to update status in database: ${updateErr.message}` });
     }
 
     // Handle Stripe Capture or Cancel
@@ -1305,47 +1203,28 @@ async function startServer() {
     const safeId = xss(String(id));
 
     const supabase = getSupabaseAdmin() || getSupabase();
-    if (supabase) {
-      const updates: any = {};
-      if (firstName !== undefined || lastName !== undefined) {
-        updates.customer_name = `${xss(String(firstName || ""))} ${xss(String(lastName || ""))}`.trim();
-      }
-      if (email !== undefined) updates.customer_email = xss(String(email));
-      if (phone !== undefined) updates.customer_phone = xss(String(phone));
-      if (date !== undefined) updates.event_date = xss(String(date));
-      if (eventType !== undefined) updates.event_type = xss(String(eventType));
-      if (guests !== undefined) updates.guest_count = parseInt(String(guests), 10);
-      if (notes !== undefined) updates.notes = xss(String(notes));
-      if (price !== undefined) updates.total_price = parseFloat(String(price));
-      if (deposit !== undefined) updates.deposit_amount = parseFloat(String(deposit));
-      if (balance !== undefined) updates.balance_amount = parseFloat(String(balance));
-      if (status !== undefined) updates.status = xss(String(status));
+    if (!supabase) {
+      return res.status(500).json({ error: "Supabase integration is required. Local fallback is disabled." });
+    }
+    const updates: any = {};
+    if (firstName !== undefined || lastName !== undefined) {
+      updates.customer_name = `${xss(String(firstName || ""))} ${xss(String(lastName || ""))}`.trim();
+    }
+    if (email !== undefined) updates.customer_email = xss(String(email));
+    if (phone !== undefined) updates.customer_phone = xss(String(phone));
+    if (date !== undefined) updates.event_date = xss(String(date));
+    if (eventType !== undefined) updates.event_type = xss(String(eventType));
+    if (guests !== undefined) updates.guest_count = parseInt(String(guests), 10);
+    if (notes !== undefined) updates.notes = xss(String(notes));
+    if (price !== undefined) updates.total_price = parseFloat(String(price));
+    if (deposit !== undefined) updates.deposit_amount = parseFloat(String(deposit));
+    if (balance !== undefined) updates.balance_amount = parseFloat(String(balance));
+    if (status !== undefined) updates.status = xss(String(status));
 
-      const { error } = await supabase.from("bookings").update(updates).eq("booking_ref", safeId);
-      if (error) {
-        console.error("Supabase edit error:", error);
-        return res.status(500).json({ error: "Database update failed" });
-      }
-    } else {
-      await fileMutex.runExclusive(async () => {
-        const bookings = await readLocalBookings();
-        const match = bookings.find((b) => b.id === safeId);
-        if (match) {
-          if (firstName !== undefined) match.firstName = xss(String(firstName));
-          if (lastName !== undefined) match.lastName = xss(String(lastName));
-          if (email !== undefined) match.email = xss(String(email));
-          if (phone !== undefined) match.phone = xss(String(phone));
-          if (date !== undefined) match.date = xss(String(date));
-          if (eventType !== undefined) match.eventType = xss(String(eventType));
-          if (guests !== undefined) match.guests = parseInt(String(guests), 10);
-          if (notes !== undefined) match.notes = xss(String(notes));
-          if (price !== undefined) match.price = parseFloat(String(price));
-          if (deposit !== undefined) match.deposit = parseFloat(String(deposit));
-          if (balance !== undefined) match.balance = parseFloat(String(balance));
-          if (status !== undefined) match.status = xss(String(status));
-          await writeLocalBookings(bookings);
-        }
-      });
+    const { error } = await supabase.from("bookings").update(updates).eq("booking_ref", safeId);
+    if (error) {
+      console.error("Supabase edit error:", error);
+      return res.status(500).json({ error: `Database update failed: ${error.message}` });
     }
 
     res.json({ success: true });
@@ -1358,17 +1237,12 @@ async function startServer() {
     const safeId = xss(String(id));
 
     const supabase = getSupabaseAdmin() || getSupabase();
-    if (supabase) {
-      await supabase.from("bookings").update({ status: 'cancelled' }).eq("booking_ref", safeId);
-    } else {
-      await fileMutex.runExclusive(async () => {
-        const bookings = await readLocalBookings();
-        const match = bookings.find((b) => b.id === safeId);
-        if (match) {
-          match.status = 'cancelled';
-          await writeLocalBookings(bookings);
-        }
-      });
+    if (!supabase) {
+      return res.status(500).json({ error: "Supabase integration is required. Local fallback is disabled." });
+    }
+    const { error } = await supabase.from("bookings").update({ status: 'cancelled' }).eq("booking_ref", safeId);
+    if (error) {
+      return res.status(500).json({ error: error.message });
     }
 
     res.json({ success: true });
@@ -1381,17 +1255,12 @@ async function startServer() {
     const safeId = xss(String(id));
 
     const supabase = getSupabaseAdmin() || getSupabase();
-    if (supabase) {
-      await supabase.from("bookings").update({ status: 'pending' }).eq("booking_ref", safeId);
-    } else {
-      await fileMutex.runExclusive(async () => {
-        const bookings = await readLocalBookings();
-        const match = bookings.find((b) => b.id === safeId);
-        if (match) {
-          match.status = 'pending';
-          await writeLocalBookings(bookings);
-        }
-      });
+    if (!supabase) {
+      return res.status(500).json({ error: "Supabase integration is required. Local fallback is disabled." });
+    }
+    const { error } = await supabase.from("bookings").update({ status: 'pending' }).eq("booking_ref", safeId);
+    if (error) {
+      return res.status(500).json({ error: error.message });
     }
 
     res.json({ success: true });
@@ -1404,14 +1273,12 @@ async function startServer() {
     const safeId = xss(String(id));
 
     const supabase = getSupabaseAdmin() || getSupabase();
-    if (supabase) {
-      await supabase.from("bookings").delete().eq("booking_ref", safeId);
-    } else {
-      await fileMutex.runExclusive(async () => {
-        let bookings = await readLocalBookings();
-        bookings = bookings.filter((b) => b.id !== safeId);
-        await writeLocalBookings(bookings);
-      });
+    if (!supabase) {
+      return res.status(500).json({ error: "Supabase integration is required. Local fallback is disabled." });
+    }
+    const { error } = await supabase.from("bookings").delete().eq("booking_ref", safeId);
+    if (error) {
+      return res.status(500).json({ error: error.message });
     }
 
     res.json({ success: true });
@@ -1444,28 +1311,27 @@ async function startServer() {
     }
 
     const supabase = getSupabaseAdmin() || getSupabase();
+    if (!supabase) {
+      return res.status(500).json({ error: "Supabase integration is required. Local fallback is disabled." });
+    }
 
-    if (supabase) {
-      const { data: currentSettings, error: selectError } = await supabase.from("business_settings").select("id").limit(1);
-      if (!selectError && currentSettings && currentSettings.length > 0) {
-        const { error: updateError } = await supabase.from("business_settings").update(sanitizedUpdates).eq("id", currentSettings[0].id);
-        if (updateError) {
-          console.error("Supabase settings update error:", updateError);
-          return res.status(500).json({ error: "Database update failed" });
-        }
-      } else {
-        const { error: insertError } = await supabase.from("business_settings").insert(sanitizedUpdates);
-        if (insertError) {
-          console.error("Supabase settings insert error:", insertError);
-          return res.status(500).json({ error: "Database insert failed" });
-        }
+    const { data: currentSettings, error: selectError } = await supabase.from("business_settings").select("id").limit(1);
+    if (selectError) {
+      console.error("Supabase settings select error:", selectError);
+      return res.status(500).json({ error: `Database select failed: ${selectError.message}` });
+    }
+    if (currentSettings && currentSettings.length > 0) {
+      const { error: updateError } = await supabase.from("business_settings").update(sanitizedUpdates).eq("id", currentSettings[0].id);
+      if (updateError) {
+        console.error("Supabase settings update error:", updateError);
+        return res.status(500).json({ error: `Database update failed: ${updateError.message}` });
       }
     } else {
-      await fileMutex.runExclusive(async () => {
-        const currentLocal = await readLocalSettings();
-        const merged = { ...currentLocal, ...sanitizedUpdates };
-        await writeLocalSettings(merged);
-      });
+      const { error: insertError } = await supabase.from("business_settings").insert(sanitizedUpdates);
+      if (insertError) {
+        console.error("Supabase settings insert error:", insertError);
+        return res.status(500).json({ error: `Database insert failed: ${insertError.message}` });
+      }
     }
 
     res.json({ success: true });

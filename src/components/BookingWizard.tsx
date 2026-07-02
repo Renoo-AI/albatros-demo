@@ -252,8 +252,12 @@ export function BookingWizard() {
   };
 
   return (
-    <section className="bg-zinc-50 dark:bg-zinc-950 py-32 relative overflow-hidden" id="reservation">
+    <section className="bg-zinc-50 dark:bg-[#070709] py-32 relative overflow-hidden" id="reservation">
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#C6A969]/30 to-transparent" />
+      
+      {/* Background gold light leaks */}
+      <div className="absolute -top-40 -right-40 w-96 h-96 bg-[#C6A969]/5 rounded-full filter blur-[100px] pointer-events-none" />
+      <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-[#C6A969]/5 rounded-full filter blur-[100px] pointer-events-none" />
 
       <div className="max-w-4xl mx-auto px-6 relative z-10">
 
@@ -262,17 +266,18 @@ export function BookingWizard() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
-          className="text-center mb-16 space-y-4 animate-fade-in"
+          className="text-center mb-16 space-y-4"
         >
-          <span className="section-label">Réservation</span>
+          <span className="font-sans text-[10px] tracking-[0.3em] uppercase text-[#C6A969] font-bold block">{t("booking.section_label") || "RÉSERVATION"}</span>
           <h2 className="text-3xl md:text-5xl font-display font-medium text-zinc-950 dark:text-white tracking-tight">
             {t("booking.title")}
           </h2>
-          <p className="text-zinc-600 dark:text-zinc-400 font-sans text-base max-w-lg mx-auto">
+          <p className="text-zinc-650 dark:text-zinc-400 font-sans text-base max-w-lg mx-auto leading-relaxed">
             {t("booking.subtitle")}
           </p>
         </motion.div>
 
+        {/* Step Indicator Progress Bar */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -280,53 +285,57 @@ export function BookingWizard() {
           transition={{ duration: 0.8, delay: 0.1 }}
           className="flex justify-center items-center relative mb-16"
         >
-          <div className="absolute top-5 left-1/2 -translate-x-1/2 w-1/2 h-[2px] bg-zinc-200 dark:bg-zinc-800 z-0">
+          <div className="absolute top-5 left-1/2 -translate-x-1/2 w-1/2 h-[1px] bg-zinc-200 dark:bg-white/[0.06] z-0">
             <div
-              className="h-full bg-[#C6A969] transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
+              className="h-full bg-gradient-to-r from-[#C6A969] to-[#E8D5A3] transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
               style={{ width: step === 1 ? "0%" : step === 2 ? "50%" : "100%" }}
             />
           </div>
-          <div className="flex gap-16 md:gap-24">
+          <div className="flex gap-12 md:gap-20">
             {[1, 2, 3].map((num) => {
               const label = num === 1 ? t("booking.step_date") : num === 2 ? t("booking.step_details") : t("booking.step_payment");
               const isActive = step === num;
               const isCompleted = step > num;
               return (
-                <div key={num} className="flex flex-col items-center gap-3 relative z-10 bg-zinc-50 dark:bg-zinc-950 px-2">
-                  <div className={`w-10 h-10 flex items-center justify-center font-sans font-medium text-sm transition-all duration-500 border rounded-full ${
+                <div key={num} className="flex flex-col items-center gap-3 relative z-10 bg-zinc-50 dark:bg-[#070709] px-3">
+                  <div className={`w-10 h-10 flex items-center justify-center font-sans font-medium text-sm transition-all duration-500 border rounded-none ${
                     isActive
-                      ? "bg-[#C6A969] text-white border-[#C6A969] shadow-[0_4px_15px_rgba(198,169,105,0.3)]"
+                      ? "bg-[#C6A969] text-zinc-950 border-[#C6A969] shadow-[0_0_15px_rgba(198,169,105,0.3)] font-bold"
                       : isCompleted
-                        ? "bg-zinc-100 dark:bg-zinc-800 text-[#C6A969] border-[#C6A969]/30"
-                        : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400"
+                        ? "bg-[#C6A969]/10 text-[#C6A969] border-[#C6A969]/30"
+                        : "bg-white dark:bg-[#0C0C0E] border-zinc-200 dark:border-white/[0.06] text-zinc-400"
                   }`}>
-                    {isCompleted ? <i className="fa-solid fa-check"></i> : num}
+                    {isCompleted ? <i className="fa-solid fa-check text-xs"></i> : num}
                   </div>
-                  <span className={`font-sans text-xs transition-colors duration-300 ${isActive ? "font-medium text-[#C6A969]" : "text-zinc-500"}`}>{label}</span>
+                  <span className={`font-sans text-[10px] font-bold uppercase tracking-wider transition-colors duration-300 ${isActive ? "text-[#C6A969]" : "text-zinc-500"}`}>{label}</span>
                 </div>
               );
             })}
           </div>
         </motion.div>
 
+        {/* Form Container */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="bg-white dark:bg-zinc-900 border border-zinc-200/60 dark:border-zinc-800/60 shadow-[0_8px_60px_rgb(0,0,0,0.06)] dark:shadow-[0_8px_60px_rgb(0,0,0,0.2)] p-8 md:p-12 relative"
+          className="bg-white dark:bg-[#0C0C0E]/90 border border-zinc-200/60 dark:border-white/[0.04] backdrop-blur-md shadow-[0_15px_50px_rgba(0,0,0,0.02)] dark:shadow-[0_25px_60px_rgba(0,0,0,0.7)] p-8 md:p-12 relative rounded-none"
         >
+          {/* Subtle gold line on top of card */}
+          <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-[#C6A969]/50 to-transparent" />
+
           <AnimatePresence mode="wait">
 
           {step === 1 && (
             <motion.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.4 }} className="space-y-8 text-left">
               <div className="flex flex-col text-left">
-                <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-4">{t("booking.step_date")}</label>
+                <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-4">{t("booking.step_date")}</label>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
                   {/* Day input */}
                   <div className="flex flex-col text-left">
-                    <label className="text-xs font-sans uppercase tracking-wider text-zinc-400 mb-2">Jour</label>
+                    <label className="text-[10px] font-sans font-bold uppercase tracking-wider text-zinc-400 mb-2">Jour</label>
                     <input
                       type="number"
                       min="1"
@@ -352,7 +361,7 @@ export function BookingWizard() {
 
                   {/* Month input */}
                   <div className="flex flex-col text-left">
-                    <label className="text-xs font-sans uppercase tracking-wider text-zinc-400 mb-2">Mois</label>
+                    <label className="text-[10px] font-sans font-bold uppercase tracking-wider text-zinc-400 mb-2">Mois</label>
                     <input
                       type="number"
                       min="1"
@@ -384,7 +393,7 @@ export function BookingWizard() {
 
                   {/* Year input */}
                   <div className="flex flex-col text-left">
-                    <label className="text-xs font-sans uppercase tracking-wider text-zinc-400 mb-2">Année</label>
+                    <label className="text-[10px] font-sans font-bold uppercase tracking-wider text-zinc-400 mb-2">Année</label>
                     <input
                       type="number"
                       min={new Date().getFullYear()}
@@ -420,53 +429,53 @@ export function BookingWizard() {
                   type="button"
                   onClick={handleVerifyDate}
                   disabled={checkingAvailability || !selectedDay || !selectedMonth || !selectedYear}
-                  className="btn btn-gold flex items-center gap-2 justify-center cursor-pointer w-full shine-effect text-sm font-sans font-medium h-[46px]"
+                  className="px-6 py-4 bg-[#C6A969] hover:bg-[#D4B978] disabled:opacity-40 disabled:cursor-not-allowed text-zinc-950 font-sans text-xs font-bold uppercase tracking-widest flex items-center gap-2 justify-center cursor-pointer w-full shadow-[0_4px_20px_rgba(198,169,105,0.15)] transition-all duration-300"
                 >
                   {checkingAvailability ? (
-                    <i className="fa-solid fa-circle-notch fa-spin"></i>
+                    <i className="fa-solid fa-circle-notch fa-spin text-sm"></i>
                   ) : (
-                    <i className="fa-solid fa-magnifying-glass text-xs"></i>
+                    <i className="fa-solid fa-calendar-check text-sm"></i>
                   )}
                   Vérifier la disponibilité
                 </button>
               </div>
 
               {verificationError && (
-                <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-700 dark:text-red-400 text-sm font-sans flex items-start gap-3 animate-fade-in">
-                  <i className="fa-solid fa-circle-xmark mt-1"></i>
+                <div className="p-5 bg-red-950/20 border border-red-500/20 text-red-400 text-xs font-sans flex items-start gap-3 animate-fade-in">
+                  <i className="fa-solid fa-circle-xmark mt-0.5 text-base"></i>
                   <div>
-                    <span className="font-medium block mb-1">Date non disponible</span>
+                    <span className="font-bold block mb-1 uppercase tracking-wider text-red-300">Date indisponible</span>
                     {verificationError}
                   </div>
                 </div>
               )}
 
               {isVerified && selectedDate && (
-                <div className="p-4 bg-[#C6A969]/5 border border-[#C6A969]/20 text-[#A88B4A] dark:text-[#D4B978] text-sm font-sans flex items-start gap-3 animate-fade-in">
-                  <i className="fa-solid fa-circle-check mt-1"></i>
+                <div className="p-5 bg-[#C6A969]/5 border border-[#C6A969]/20 text-[#D4B978] text-xs font-sans flex items-start gap-3 animate-fade-in">
+                  <i className="fa-solid fa-circle-check mt-0.5 text-base"></i>
                   <div>
-                    <span className="font-medium block mb-1">Date disponible !</span>
+                    <span className="font-bold block mb-1 uppercase tracking-wider text-[#C6A969]">Félicitations !</span>
                     {t("booking.available_date_success", { date: formatNiceDate(new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1, parseInt(selectedDay))) })}
                   </div>
                 </div>
               )}
 
               {!isVerified && !verificationError && (
-                <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-sm font-sans flex items-center gap-3">
-                  <i className="fa-solid fa-circle-info text-[#C6A969]"></i>
-                  Veuillez remplir les 3 champs ci-dessus et cliquer sur "Vérifier la disponibilité" pour continuer.
+                <div className="p-4 bg-white/[0.02] border border-white/5 text-zinc-400 text-xs font-sans flex items-center gap-3">
+                  <i className="fa-solid fa-circle-info text-[#C6A969] text-base"></i>
+                  <span>Veuillez entrer une date et cliquer sur "Vérifier la disponibilité" pour configurer votre réservation.</span>
                 </div>
               )}
 
-              <div className="flex justify-end pt-8">
+              <div className="flex justify-end pt-8 border-t border-white/[0.04]">
                 <button
                   type="button"
                   onClick={() => setStep(2)}
                   disabled={!isVerified || !selectedDate}
-                  className="btn btn-gold cursor-pointer"
+                  className="px-6 py-3 bg-[#C6A969] hover:bg-[#D4B978] disabled:opacity-40 disabled:cursor-not-allowed text-zinc-950 font-sans text-xs font-bold uppercase tracking-wider flex items-center gap-2 justify-center cursor-pointer transition-all duration-300 shadow-[0_4px_15px_rgba(198,169,105,0.1)]"
                 >
                   {t("booking.btn_continue")}
-                  <i className="fa-solid fa-arrow-right ml-2 text-xs"></i>
+                  <i className="fa-solid fa-arrow-right text-xs"></i>
                 </button>
               </div>
             </motion.div>
@@ -474,21 +483,21 @@ export function BookingWizard() {
 
           {step === 2 && (
             <motion.div key="step2" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.4 }} className="space-y-8">
-              <form onSubmit={handleFormSubmit} className="space-y-6">
+              <form onSubmit={handleFormSubmit} className="space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="flex flex-col text-left">
-                    <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-2">{t("booking.first_name")}</label>
+                    <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">{t("booking.first_name")}</label>
                     <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} className="input-lux" placeholder={t("booking.first_name_placeholder")} />
                   </div>
                   <div className="flex flex-col text-left">
-                    <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-2">{t("booking.last_name")}</label>
+                    <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">{t("booking.last_name")}</label>
                     <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} className="input-lux" placeholder={t("booking.last_name_placeholder")} />
                   </div>
                   <div className="hidden" aria-hidden="true" style={{ display: 'none' }}>
                     <input type="text" id="bot_field" name="bot_field" value={botField} onChange={(e) => setBotField(e.target.value)} tabIndex={-1} autoComplete="off" />
                   </div>
                   <div className="flex flex-col text-left">
-                    <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-2">{t("booking.phone")}</label>
+                    <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">{t("booking.phone")}</label>
                     <input
                       type="tel"
                       required
@@ -504,23 +513,35 @@ export function BookingWizard() {
                     />
                   </div>
                   <div className="flex flex-col text-left">
-                    <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-2">{t("booking.email")}</label>
+                    <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">{t("booking.email")}</label>
                     <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="input-lux" placeholder={t("booking.email_placeholder")} />
                   </div>
 
                   <div className="md:col-span-2 flex flex-col text-left mt-4">
-                    <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-3">{t("booking.event_type")}</label>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                    <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-[#C6A969] mb-3">{t("booking.event_type")}</label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                       {(Object.keys(eventPrices) as EventTypeSlug[]).map((slug) => {
                         const isSelected = eventType === slug;
                         return (
-                          <button key={slug} type="button" onClick={() => setEventType(slug)} className={`p-4 border text-center transition-all duration-300 cursor-pointer group ${
-                            isSelected
-                              ? "border-[#C6A969] bg-[#C6A969] text-white shadow-[0_4px_15px_rgba(198,169,105,0.25)]"
-                              : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:border-[#C6A969]/40 text-zinc-600 dark:text-zinc-400"
-                          }`}>
-                            <span className="font-sans text-xs font-medium block">{t(`event.${slug}`)}</span>
-                            <span className="text-xs opacity-75 mt-1 block">{eventPrices[slug]} TND</span>
+                          <button
+                            key={slug}
+                            type="button"
+                            onClick={() => setEventType(slug)}
+                            className={`p-5 border text-center transition-all duration-300 cursor-pointer flex flex-col items-center justify-center gap-3 relative group ${
+                              isSelected
+                                ? "border-[#C6A969] bg-[#C6A969]/10 text-white shadow-[0_4px_20px_rgba(198,169,105,0.15)]"
+                                : "border-white/[0.04] bg-white/[0.01] hover:border-[#C6A969]/30 text-zinc-400 hover:text-white"
+                            }`}
+                          >
+                            {/* Accent gold top bar on select */}
+                            {isSelected && (
+                              <div className="absolute top-0 inset-x-0 h-[2px] bg-[#C6A969]" />
+                            )}
+                            <i className={`fa-solid ${eventIcons[slug]} text-2xl transition-transform duration-300 group-hover:scale-110 text-[#C6A969]`}></i>
+                            <div className="space-y-1">
+                              <span className="font-sans text-[10px] font-bold uppercase tracking-wider block">{t(`event.${slug}`)}</span>
+                              <span className="text-[10px] opacity-60 block font-semibold">{eventPrices[slug]} TND</span>
+                            </div>
                           </button>
                         );
                       })}
@@ -528,36 +549,37 @@ export function BookingWizard() {
                   </div>
 
                   <div className="flex flex-col text-left md:col-span-2">
-                    <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-2">{t("booking.guests")}</label>
+                    <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">{t("booking.guests")}</label>
                     <input type="number" required min={minGuests} max={maxGuests} value={guests} onChange={(e) => setGuests(parseInt(e.target.value) || 0)} className="input-lux" />
-                    <span className="text-xs text-zinc-400 mt-1">{t("booking.capacity_limit") || `Capacité autorisée : de ${minGuests} à ${maxGuests} personnes.`}</span>
+                    <span className="text-[10px] text-zinc-500 mt-1.5 uppercase font-semibold tracking-wider">{t("booking.capacity_limit") || `Capacité autorisée : de ${minGuests} à ${maxGuests} personnes.`}</span>
                   </div>
 
                   <div className="flex flex-col text-left md:col-span-2">
-                    <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white mb-2">{t("booking.notes")}</label>
+                    <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">{t("booking.notes")}</label>
                     <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="input-lux" placeholder={t("booking.notes_placeholder")} />
                   </div>
                 </div>
 
-                <div className="p-5 bg-[#C6A969]/5 border border-[#C6A969]/15 text-left space-y-2">
-                  <div className="flex justify-between items-center text-sm text-zinc-600 dark:text-zinc-400">
+                {/* Luxury Receipt Pricing Breakdown */}
+                <div className="p-6 bg-[#C6A969]/5 border border-[#C6A969]/10 text-left space-y-3">
+                  <div className="flex justify-between items-center text-xs text-zinc-400 uppercase tracking-wider">
                     <span>{t("booking.total_price")}</span>
-                    <span>{basePrice.toLocaleString("fr-TN")} TND</span>
+                    <span className="font-bold text-white">{basePrice.toLocaleString("fr-TN")} TND</span>
                   </div>
-                  <div className="flex justify-between items-center pt-3 border-t border-[#C6A969]/10 text-base font-medium text-zinc-950 dark:text-white">
+                  <div className="flex justify-between items-center pt-3 border-t border-[#C6A969]/10 text-xs font-bold text-zinc-300 uppercase tracking-wider">
                     <span>{t("booking.deposit_price")}</span>
-                    <span className="text-[#C6A969] font-display text-lg">{depositAmount.toLocaleString("fr-TN")} TND</span>
+                    <span className="text-[#C6A969] font-display text-lg tracking-wider">{depositAmount.toLocaleString("fr-TN")} TND</span>
                   </div>
                 </div>
 
-                <div className="flex justify-between pt-6">
-                  <button type="button" onClick={() => setStep(1)} className="btn btn-outline cursor-pointer">
-                    <i className="fa-solid fa-arrow-left mr-2 text-xs"></i>
+                <div className="flex justify-between pt-6 border-t border-white/[0.04]">
+                  <button type="button" onClick={() => setStep(1)} className="px-5 py-3 border border-white/5 bg-white/[0.02] hover:bg-white/5 text-zinc-400 hover:text-white font-sans text-xs font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer transition-all">
+                    <i className="fa-solid fa-arrow-left text-xs"></i>
                     {t("booking.btn_back")}
                   </button>
-                  <button type="submit" className="btn btn-gold cursor-pointer" disabled={loadingSubmit}>
+                  <button type="submit" className="px-5 py-3 bg-[#C6A969] hover:bg-[#D4B978] text-zinc-950 font-sans text-xs font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer transition-all shadow-[0_4px_15px_rgba(198,169,105,0.15)]" disabled={loadingSubmit}>
                     {t("booking.btn_payment")}
-                    <i className="fa-solid fa-arrow-right ml-2 text-xs"></i>
+                    <i className="fa-solid fa-arrow-right text-xs"></i>
                   </button>
                 </div>
               </form>
@@ -566,23 +588,23 @@ export function BookingWizard() {
 
           {step === 3 && (
             <motion.div key="step3" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.4 }} className="space-y-8 text-left">
-              <div className="bg-[#C6A969]/5 border border-[#C6A969]/15 p-6 space-y-3">
-                <div className="flex justify-between text-sm text-zinc-600 dark:text-zinc-400 border-b border-[#C6A969]/10 pb-2">
+              <div className="bg-[#C6A969]/5 border border-[#C6A969]/10 p-6 space-y-3 font-sans text-xs uppercase tracking-wider">
+                <div className="flex justify-between text-zinc-400 border-b border-[#C6A969]/10 pb-2">
                   <span>{t("booking.step_date")}</span>
-                  <span className="font-medium text-zinc-950 dark:text-white">{formatNiceDate(parseISO(selectedDate!))}</span>
+                  <span className="font-bold text-white">{formatNiceDate(parseISO(selectedDate!))}</span>
                 </div>
-                <div className="flex justify-between text-sm text-zinc-600 dark:text-zinc-400 border-b border-[#C6A969]/10 pb-2">
+                <div className="flex justify-between text-zinc-400 border-b border-[#C6A969]/10 pb-2">
                   <span>{t("booking.total_price")}</span>
-                  <span className="font-medium text-zinc-950 dark:text-white">{basePrice.toLocaleString("fr-TN")} TND</span>
+                  <span className="font-bold text-white">{basePrice.toLocaleString("fr-TN")} TND</span>
                 </div>
-                <div className="flex justify-between text-base pt-1 font-medium text-zinc-950 dark:text-white">
+                <div className="flex justify-between pt-1 font-bold text-zinc-300">
                   <span>{t("booking.deposit_price")}</span>
                   <span className="text-[#C6A969] font-display text-lg">{depositAmount.toLocaleString("fr-TN")} TND</span>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <label className="font-sans text-sm font-medium text-zinc-950 dark:text-white block">
+                <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-[#C6A969] block">
                   {t("booking.choose_payment_method") || "Choisir un moyen de paiement en ligne"}
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -590,19 +612,22 @@ export function BookingWizard() {
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('konnect')}
-                    className={`p-6 border text-left transition-all duration-300 rounded-none flex flex-col gap-4 cursor-pointer ${
+                    className={`p-6 border text-left transition-all duration-300 flex flex-col gap-4 cursor-pointer relative ${
                       paymentMethod === 'konnect'
-                        ? "border-[#C6A969] bg-[#C6A969]/5 shadow-[0_4px_20px_rgba(198,169,105,0.1)]"
-                        : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:border-[#C6A969]/30"
+                        ? "border-[#C6A969] bg-[#C6A969]/10 shadow-[0_4px_25px_rgba(198,169,105,0.15)]"
+                        : "border-white/[0.04] bg-white/[0.01] hover:border-[#C6A969]/30"
                     }`}
                   >
+                    {paymentMethod === 'konnect' && (
+                      <div className="absolute top-0 inset-x-0 h-[2px] bg-[#C6A969]" />
+                    )}
                     <div className="flex items-center gap-3">
-                      <img src="/media/konnect.png" alt="Konnect" className="h-7 object-contain" />
-                      <span className="font-sans font-medium text-sm text-zinc-900 dark:text-white">
+                      <img src="/media/konnect.png" alt="Konnect" className="h-7 object-contain brightness-0 invert" />
+                      <span className="font-sans font-bold text-xs uppercase tracking-wider text-white">
                         Konnect
                       </span>
                     </div>
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed block">
+                    <span className="text-[10px] text-zinc-400 leading-relaxed block font-semibold">
                       Acompte par carte bancaire (locales/internationales) ou postale (e-DINAR)
                     </span>
                   </button>
@@ -611,16 +636,19 @@ export function BookingWizard() {
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('flouci')}
-                    className={`p-6 border text-left transition-all duration-300 rounded-none flex flex-col gap-4 cursor-pointer ${
+                    className={`p-6 border text-left transition-all duration-300 flex flex-col gap-4 cursor-pointer relative ${
                       paymentMethod === 'flouci'
-                        ? "border-[#C6A969] bg-[#C6A969]/5 shadow-[0_4px_20px_rgba(198,169,105,0.1)]"
-                        : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:border-[#C6A969]/30"
+                        ? "border-[#C6A969] bg-[#C6A969]/10 shadow-[0_4px_25px_rgba(198,169,105,0.15)]"
+                        : "border-white/[0.04] bg-white/[0.01] hover:border-[#C6A969]/30"
                     }`}
                   >
+                    {paymentMethod === 'flouci' && (
+                      <div className="absolute top-0 inset-x-0 h-[2px] bg-[#C6A969]" />
+                    )}
                     <div className="flex items-center">
-                      <img src="/media/flouci.png" alt="Flouci" className="h-7 object-contain" />
+                      <img src="/media/flouci.png" alt="Flouci" className="h-7 object-contain brightness-0 invert" />
                     </div>
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed block">
+                    <span className="text-[10px] text-zinc-400 leading-relaxed block font-semibold">
                       Acompte par portefeuille électronique ou Wallets locaux
                     </span>
                   </button>
@@ -629,25 +657,29 @@ export function BookingWizard() {
 
               <form onSubmit={handlePaymentSubmit} className="space-y-6">
                   {paymentMethod === 'konnect' && (!config?.konnect || !settings) && (
-                    <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-sm font-sans flex items-center gap-3">
+                    <div className="p-4 bg-white/[0.01] border border-white/5 text-zinc-400 text-xs font-sans flex items-center gap-3">
                       <i className="fa-solid fa-circle-info text-[#C6A969] text-base"></i>
                       <span>Vous allez simuler le paiement en ligne (mode démo/test Konnect) pour enregistrer la réservation.</span>
                     </div>
                   )}
                   {paymentMethod === 'flouci' && (!config?.flouci || !settings) && (
-                    <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-sm font-sans flex items-center gap-3">
+                    <div className="p-4 bg-white/[0.01] border border-white/5 text-zinc-400 text-xs font-sans flex items-center gap-3">
                       <i className="fa-solid fa-circle-info text-[#C6A969] text-base"></i>
                       <span>Vous allez simuler le paiement en ligne (mode démo/test Flouci) pour enregistrer la réservation.</span>
                     </div>
                   )}
 
-                <div className="flex justify-between pt-6">
-                  <button type="button" onClick={() => setStep(2)} className="btn btn-outline cursor-pointer" disabled={loadingSubmit}>
-                    <i className="fa-solid fa-arrow-left mr-2 text-xs"></i>
+                <div className="flex justify-between pt-6 border-t border-white/[0.04]">
+                  <button type="button" onClick={() => setStep(2)} className="px-5 py-3 border border-white/5 bg-white/[0.02] hover:bg-white/5 text-zinc-400 hover:text-white font-sans text-xs font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer transition-all" disabled={loadingSubmit}>
+                    <i className="fa-solid fa-arrow-left text-xs"></i>
                     {t("booking.btn_back")}
                   </button>
-                  <button type="submit" className="btn btn-gold cursor-pointer flex items-center gap-2 justify-center min-w-[180px] shine-effect" disabled={loadingSubmit}>
-                    {loadingSubmit && <i className="fa-solid fa-spinner fa-spin"></i>}
+                  <button type="submit" className="px-6 py-3 bg-[#C6A969] hover:bg-[#D4B978] text-zinc-950 font-sans text-xs font-bold uppercase tracking-wider flex items-center gap-2 justify-center min-w-[180px] cursor-pointer transition-all shadow-[0_4px_15px_rgba(198,169,105,0.15)]" disabled={loadingSubmit}>
+                    {loadingSubmit ? (
+                      <i className="fa-solid fa-spinner fa-spin text-sm"></i>
+                    ) : (
+                      <i className="fa-solid fa-credit-card text-sm"></i>
+                    )}
                     {loadingSubmit 
                       ? t("booking.processing") 
                       : t("booking.btn_pay", { amount: depositAmount })}
@@ -663,23 +695,23 @@ export function BookingWizard() {
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                className="w-20 h-20 mx-auto bg-gradient-to-br from-[#C6A969] to-[#A88B4A] text-white rounded-full flex items-center justify-center text-3xl shadow-[0_8px_30px_rgba(198,169,105,0.3)]"
+                className="w-20 h-20 mx-auto bg-gradient-to-br from-[#C6A969] to-[#A88B4A] text-zinc-950 rounded-none flex items-center justify-center text-3xl shadow-[0_8px_30px_rgba(198,169,105,0.3)] animate-pulse"
               >
                 <i className="fa-solid fa-check"></i>
               </motion.div>
 
               <div className="space-y-3">
-                <h3 className="text-2xl font-display font-medium text-zinc-950 dark:text-white">
+                <h3 className="text-2xl font-display font-medium text-white">
                   {paymentMethod === 'manuel' ? "Réservation Enregistrée" : t("booking.success_title")}
                 </h3>
-                <p className="text-zinc-600 dark:text-zinc-400 font-sans text-sm max-w-lg mx-auto leading-relaxed">
+                <p className="text-zinc-400 font-sans text-sm max-w-lg mx-auto leading-relaxed">
                   {paymentMethod === 'manuel'
                     ? t("booking.success_text_manuel")
                     : t("booking.success_text")}
                 </p>
               </div>
 
-              <div className="inline-block bg-[#C6A969]/5 border border-[#C6A969]/20 px-6 py-3 text-sm font-sans text-zinc-950 dark:text-white font-medium">
+              <div className="inline-block bg-[#C6A969]/5 border border-[#C6A969]/20 px-6 py-3 text-xs font-sans text-white font-bold uppercase tracking-widest">
                 {t("booking.success_ref", { ref: bookingResult.ref })}
               </div>
             </motion.div>

@@ -1,6 +1,20 @@
-// =============================================================
-// ALBATROS — AdminConsole Component (Ultra Premium Stripe Light & Dark Mode)
-// =============================================================
+// ============================================================================
+//                               A L B A T R O S
+// ----------------------------------------------------------------------------
+// ENTERPRISE ADMINISTRATIVE CONTROL CONSOLE
+// ----------------------------------------------------------------------------
+// This module provides the administrative interface for managing the venue.
+// Core Architectural Features:
+// 1. Double-Layer Authentication fallback (database API with localStorage token
+//    caching + local session authentication keys for server-down safety).
+// 2. Real-time Reactive Polling (polls new reservations database states every 8s
+//    with sound feedback notifications using dynamic browser AudioContext osc).
+// 3. Glassmorphic Luxury Obsidian Theme layout with customized responsiveness
+//    designed to handle phone form-factors without standard table overflows.
+// 4. Manual Booking Creation Engine with automatic price calculation matrix.
+// 5. Soft-Delete Trash bin manager supporting restore/permanent purge operations.
+// ============================================================================
+
 import React, { useState, useEffect, useMemo } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import type { Booking, BlockedDate, BookingStatus, BusinessSettings, EventTypeSlug } from "../types";
@@ -889,11 +903,21 @@ export function AdminConsole() {
 
     return (
         <div className={`min-h-screen flex flex-col lg:flex-row font-sans antialiased bg-[#050507] text-zinc-300 overflow-x-hidden ${theme}`} dir="ltr">
-            <Toaster position="top-right" toastOptions={{ className: 'dark:bg-zinc-900 dark:text-white rounded-none border border-[#C6A969]/20' }} />
+            <Toaster position="top-right" toastOptions={{ className: 'dark:bg-[#0C0C0E] dark:text-white rounded-none border border-[#C6A969]/20' }} />
             
+            {/* Ambient Lighting & Luxury Grid Backdrop */}
+            <div className="absolute inset-0 bg-[#050507] pointer-events-none z-0">
+                <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(#C6A969 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+                <div className="absolute top-0 right-1/4 w-[400px] h-[400px] bg-[#C6A969]/3 rounded-full filter blur-[100px] pointer-events-none" />
+                <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-zinc-900/5 rounded-full filter blur-[120px] pointer-events-none" />
+            </div>
+
             {/* DESKTOP SIDEBAR */}
             <aside className="hidden lg:flex flex-col w-20 hover:w-64 transition-all duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] fixed inset-y-0 left-0 z-50 bg-[#08080A]/95 border-r border-white/[0.04] backdrop-blur-md group overflow-hidden shadow-2xl">
-                <div className="flex items-center h-20 px-6 shrink-0 border-b border-white/[0.04]">
+                {/* Gold Highlight on edge */}
+                <div className="absolute top-0 right-0 bottom-0 w-[1px] bg-gradient-to-b from-transparent via-[#C6A969]/20 to-transparent" />
+                
+                <div className="flex items-center h-20 px-6 shrink-0 border-b border-white/[0.04] relative">
                     <span className="font-display text-2xl font-medium tracking-tight text-white shrink-0 flex items-center">
                         A<span className="text-[#C6A969] group-hover:hidden">.</span>
                         <span className="hidden group-hover:inline opacity-0 group-hover:opacity-100 group-hover:animate-fade-in transition-opacity">lbatros<span className="text-[#C6A969]">.</span></span>
@@ -940,14 +964,14 @@ export function AdminConsole() {
             </div>
 
             {/* MAIN VIEW CONTROLLER */}
-            <main className="flex-grow w-full max-w-full overflow-x-hidden lg:ml-20 transition-all duration-300">
+            <main className="flex-grow w-full max-w-full overflow-x-hidden lg:ml-20 transition-all duration-300 relative z-10">
                 <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-12 py-24 pb-32 flex flex-col relative z-10">
 
                     {/* VIEW HEADER & ACTIONS */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-8 border-b border-white/[0.04] text-left">
                         <div className="space-y-1.5">
                             <div className="flex items-center gap-3">
-                                <span className="font-sans text-[10px] font-bold uppercase tracking-[0.25em] text-[#C6A969]">
+                                <span className="font-sans text-[10px] font-bold uppercase tracking-[0.25em] text-[#C6A969] animate-pulse">
                                     {activeTab === "dashboard" && "Vue d'ensemble"}
                                     {activeTab === "bookings" && "Gestion"}
                                     {activeTab === "calendar" && "Planification"}
@@ -1013,7 +1037,7 @@ export function AdminConsole() {
                     {activeTab === "dashboard" && (
                         <div className="space-y-8 animate-fade-in flex flex-col">
                             {/* Stat Cards Grid */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                                 <StatCard icon="fa-calendar-check" label="Réservations Actives" value={stats.totalBookings} />
                                 <StatCard icon="fa-coins" label="Chiffre d'Affaires" value={`${stats.revenue.toLocaleString("fr-TN")} TND`} isGold />
                                 <StatCard icon="fa-hand-holding-dollar" label="Acomptes Reçus" value={`${stats.deposits.toLocaleString("fr-TN")} TND`} isGold />
@@ -1021,17 +1045,17 @@ export function AdminConsole() {
                             </div>
 
                             {/* Recent Bookings (Full Width Table) */}
-                            <div className="bg-[#0C0C0E]/60 backdrop-blur-md border border-white/[0.04] p-6 space-y-5 transition-all duration-500 hover:border-white/[0.08] shadow-2xl">
+                            <div className="bg-[#0C0C0E]/60 backdrop-blur-md border border-white/[0.04] p-6 space-y-6 transition-all duration-500 hover:border-white/[0.08] shadow-2xl">
                                 <div className="flex justify-between items-center pb-3 border-b border-white/[0.04]">
                                     <div className="flex items-center gap-3">
                                         <div className="w-1 h-5 bg-[#C6A969] rounded-none animate-pulse" />
-                                        <h2 className="font-display text-lg font-medium text-white">
+                                        <h2 className="font-display text-lg font-medium text-white tracking-wide">
                                             Réservations Récentes
                                         </h2>
                                     </div>
                                     <button
                                         onClick={() => setActiveTab("bookings")}
-                                        className="font-sans text-sm font-bold uppercase tracking-wider text-[#C6A969] hover:text-[#B59858] transition-colors"
+                                        className="font-sans text-xs font-bold uppercase tracking-widest text-[#C6A969] hover:text-[#D4B978] transition-colors cursor-pointer"
                                     >
                                         Voir toutes &rarr;
                                     </button>
@@ -1041,7 +1065,7 @@ export function AdminConsole() {
                                     {/* Desktop View Table */}
                                     <table className="hidden md:table w-full text-left border-collapse">
                                         <thead>
-                                            <tr className="border-b border-white/[0.04] text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                                            <tr className="border-b border-white/[0.04] text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">
                                                 <th className="pb-3 px-3">Réf</th>
                                                 <th className="pb-3 px-3">Date</th>
                                                 <th className="pb-3 px-3">Client</th>
@@ -1052,7 +1076,7 @@ export function AdminConsole() {
                                         </thead>
                                         <tbody>
                                             {activeBookings.slice(0, 5).map((b) => (
-                                                <tr key={b.id} className="border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors">
+                                                <tr key={b.id} className="border-b border-white/[0.02] hover:bg-white/[0.02] transition-all duration-300">
                                                     <td className="py-3.5 px-3 font-semibold text-[#C6A969] text-xs whitespace-nowrap">
                                                         {b.id}
                                                     </td>
@@ -1069,7 +1093,7 @@ export function AdminConsole() {
                                                         {b.price.toLocaleString("fr-TN")} TND
                                                     </td>
                                                     <td className="py-3.5 px-3 text-center whitespace-nowrap">
-                                                        <span className={`px-2 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-wider border ${statusColors[b.status]}`}>
+                                                        <span className={`px-2.5 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-wider border ${statusColors[b.status]}`}>
                                                             {statusLabels[b.status] || b.status}
                                                         </span>
                                                     </td>
@@ -1081,7 +1105,7 @@ export function AdminConsole() {
                                     {/* Mobile View Cards */}
                                     <div className="block md:hidden space-y-4">
                                         {activeBookings.slice(0, 5).map((b) => (
-                                            <div key={b.id} className="border border-white/[0.04] bg-[#0C0C0E]/50 p-4 space-y-3 shadow-2xl rounded-none text-left transition-all duration-300 hover:border-[#C6A969]/10">
+                                            <div key={b.id} className="border border-white/[0.04] bg-[#0C0C0E]/50 p-5 space-y-3 shadow-2xl rounded-none text-left transition-all duration-300 hover:border-[#C6A969]/10">
                                                 <div className="flex justify-between items-center pb-2 border-b border-white/[0.04]">
                                                     <span className="font-semibold text-[#C6A969] text-xs">{b.id}</span>
                                                     <span className={`px-2 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-wider border ${statusColors[b.status]}`}>
@@ -1109,7 +1133,7 @@ export function AdminConsole() {
                                     </div>
 
                                     {activeBookings.length === 0 && (
-                                        <div className="text-center py-12 text-zinc-550 text-xs italic font-sans">
+                                        <div className="text-center py-12 text-zinc-500 text-xs italic font-sans">
                                             Aucune réservation enregistrée.
                                         </div>
                                     )}
@@ -1122,7 +1146,7 @@ export function AdminConsole() {
                                 <div className="bg-[#0C0C0E]/60 backdrop-blur-md border border-white/[0.04] p-6 space-y-5 transition-all duration-500 hover:border-white/[0.08] shadow-2xl">
                                     <div className="flex items-center gap-3 pb-3 border-b border-white/[0.04] text-left">
                                         <div className="w-1 h-5 bg-[#C6A969] rounded-none" />
-                                        <h3 className="font-display text-lg font-medium text-white">
+                                        <h3 className="font-display text-lg font-medium text-white tracking-wide">
                                             Statistiques par Événement
                                         </h3>
                                     </div>
@@ -1130,13 +1154,13 @@ export function AdminConsole() {
                                         {Object.entries(categoryBreakdown.counts).map(([cat, count]) => {
                                             const pct = Math.round(((count as number) / categoryBreakdown.maxVal) * 100);
                                             return (
-                                                <div key={cat} className="space-y-1.5">
+                                                <div key={cat} className="space-y-2">
                                                     <div className="flex justify-between text-xs font-sans">
                                                         <span className="text-zinc-300 font-semibold">{cat}</span>
-                                                        <span className="text-zinc-500 font-bold">{count} réservations</span>
+                                                        <span className="text-[#C6A969] font-bold">{count} réservations</span>
                                                     </div>
-                                                    <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">
-                                                        <div className="bg-[#C6A969] h-full rounded-none transition-all duration-500" style={{ width: `${pct}%` }} />
+                                                    <div className="w-full bg-white/[0.03] h-1.5 rounded-none overflow-hidden">
+                                                        <div className="bg-gradient-to-r from-[#C6A969] to-[#D4B978] h-full rounded-none transition-all duration-700" style={{ width: `${pct}%` }} />
                                                     </div>
                                                 </div>
                                             );
@@ -1148,18 +1172,18 @@ export function AdminConsole() {
                                 <div className="bg-[#0C0C0E]/60 backdrop-blur-md border border-white/[0.04] p-6 space-y-5 transition-all duration-500 hover:border-white/[0.08] shadow-2xl">
                                     <div className="flex items-center gap-3 pb-3 border-b border-white/[0.04] text-left">
                                         <div className="w-1 h-5 bg-[#C6A969] rounded-none" />
-                                        <h3 className="font-display text-lg font-medium text-white">
+                                        <h3 className="font-display text-lg font-medium text-white tracking-wide">
                                             Informations Générales
                                         </h3>
                                     </div>
                                     <div className="space-y-4 pt-1 text-xs text-zinc-400 text-left">
-                                        <div className="flex items-start gap-3 p-3.5 bg-white/[0.02] border border-white/5">
+                                        <div className="flex items-start gap-3 p-4 bg-white/[0.01] border border-white/5 rounded-none">
                                             <i className="fa-solid fa-circle-info text-[#C6A969] mt-0.5 text-sm shrink-0"></i>
-                                            <span><strong>Calendrier</strong> : Utilisez la section dédiée pour bloquer temporairement des dates ou visualiser le planning complet en grille.</span>
+                                            <span className="leading-relaxed"><strong>Calendrier</strong> : Utilisez la section dédiée pour bloquer temporairement des dates ou visualiser le planning complet en grille.</span>
                                         </div>
-                                        <div className="flex items-start gap-3 p-3.5 bg-white/[0.02] border border-white/5">
+                                        <div className="flex items-start gap-3 p-4 bg-white/[0.01] border border-white/5 rounded-none">
                                             <i className="fa-solid fa-bell text-[#C6A969] mt-0.5 text-sm shrink-0"></i>
-                                            <span>Pour toute réservation en attente, vous disposez d'un accès rapide pour contacter le client par WhatsApp ou Email directement depuis la console.</span>
+                                            <span className="leading-relaxed">Pour toute réservation en attente, vous disposez d'un accès rapide pour contacter le client par WhatsApp ou Email directement depuis la console.</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1173,7 +1197,7 @@ export function AdminConsole() {
                             {/* Filter controls */}
                             <div className="flex flex-col md:flex-row gap-4 justify-between border-b border-white/[0.04] pb-5">
                                 <div className="relative flex-1 max-w-md">
-                                    <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 dark:text-zinc-400" />
+                                    <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-zinc-650" />
                                     <input
                                         type="text"
                                         placeholder="Rechercher nom, réf, téléphone..."
@@ -1183,31 +1207,31 @@ export function AdminConsole() {
                                     />
                                 </div>
 
-                                <div className="flex gap-1 bg-white/5 p-1 border border-white/5 rounded-none self-start overflow-x-auto whitespace-nowrap scrollbar-hide w-full sm:w-auto max-w-full">
+                                <div className="flex gap-1.5 bg-[#08080A] p-1 border border-white/[0.04] rounded-none self-start overflow-x-auto whitespace-nowrap scrollbar-hide w-full sm:w-auto max-w-full">
                                     <button
                                         onClick={() => setStatusFilter("all")}
-                                        className={`px-4 py-2 text-xs font-semibold rounded-none transition-all cursor-pointer ${statusFilter === "all" ? "bg-[#C6A969] text-zinc-950 shadow-none" : "text-zinc-400 hover:text-white hover:bg-white/5"
+                                        className={`px-4 py-2 text-xs font-semibold rounded-none transition-all cursor-pointer ${statusFilter === "all" ? "bg-[#C6A969] text-zinc-950 shadow-none font-bold" : "text-zinc-400 hover:text-white hover:bg-white/5"
                                             }`}
                                     >
                                         Tous
                                     </button>
                                     <button
                                         onClick={() => setStatusFilter("pending")}
-                                        className={`px-4 py-2 text-xs font-semibold rounded-none transition-all cursor-pointer ${statusFilter === "pending" ? "bg-[#C6A969] text-zinc-950 shadow-none" : "text-zinc-400 hover:text-white hover:bg-white/5"
+                                        className={`px-4 py-2 text-xs font-semibold rounded-none transition-all cursor-pointer ${statusFilter === "pending" ? "bg-[#C6A969] text-zinc-950 shadow-none font-bold" : "text-zinc-400 hover:text-white hover:bg-white/5"
                                             }`}
                                     >
                                         En attente
                                     </button>
                                     <button
                                         onClick={() => setStatusFilter("confirmed")}
-                                        className={`px-4 py-2 text-xs font-semibold rounded-none transition-all cursor-pointer ${statusFilter === "confirmed" ? "bg-[#C6A969] text-zinc-950 shadow-none" : "text-zinc-400 hover:text-white hover:bg-white/5"
+                                        className={`px-4 py-2 text-xs font-semibold rounded-none transition-all cursor-pointer ${statusFilter === "confirmed" ? "bg-[#C6A969] text-zinc-950 shadow-none font-bold" : "text-zinc-400 hover:text-white hover:bg-white/5"
                                             }`}
                                     >
                                         Confirmés
                                     </button>
                                     <button
                                         onClick={() => setStatusFilter("cancelled")}
-                                        className={`px-4 py-2 text-xs font-semibold rounded-none transition-all cursor-pointer ${statusFilter === "cancelled" ? "bg-[#C6A969] text-zinc-950 shadow-none" : "text-zinc-400 hover:text-white hover:bg-white/5"
+                                        className={`px-4 py-2 text-xs font-semibold rounded-none transition-all cursor-pointer ${statusFilter === "cancelled" ? "bg-[#C6A969] text-zinc-950 shadow-none font-bold" : "text-zinc-400 hover:text-white hover:bg-white/5"
                                             }`}
                                     >
                                         Annulés
@@ -1220,7 +1244,7 @@ export function AdminConsole() {
                                 {/* Desktop View Table */}
                                 <table className="hidden md:table w-full text-left border-collapse min-w-[760px]">
                                     <thead>
-                                        <tr className="border-b border-white/[0.04] text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                                        <tr className="border-b border-white/[0.04] text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">
                                             <th className="pb-3 px-3">Réf</th>
                                             <th className="pb-3 px-3">Date</th>
                                             <th className="pb-3 px-3">Client</th>
@@ -1233,7 +1257,7 @@ export function AdminConsole() {
                                     </thead>
                                     <tbody>
                                         {filteredBookings.map((b) => (
-                                            <tr key={b.id} className="border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors">
+                                            <tr key={b.id} className="border-b border-white/[0.02] hover:bg-white/[0.02] transition-all duration-300">
                                                 <td className="py-3.5 px-3 font-semibold text-[#C6A969] text-xs whitespace-nowrap">
                                                     {b.id}
                                                 </td>
@@ -1253,14 +1277,14 @@ export function AdminConsole() {
                                                     {b.price.toLocaleString("fr-TN")} TND
                                                 </td>
                                                 <td className="py-3.5 px-3 text-center whitespace-nowrap">
-                                                    <span className={`px-2 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-wider border ${statusColors[b.status]}`}>
+                                                    <span className={`px-2.5 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-wider border ${statusColors[b.status]}`}>
                                                         {statusLabels[b.status] || b.status}
                                                     </span>
                                                 </td>
                                                 <td className="py-3.5 px-3 text-center whitespace-nowrap">
                                                     <button
                                                         onClick={() => setActiveBookingId(b.id)}
-                                                        className="px-3 py-1.5 border border-white/5 hover:border-[#C6A969] hover:text-[#C6A969] text-zinc-400 text-xs font-semibold transition-all cursor-pointer rounded-none inline-flex items-center gap-1.5 bg-white/5"
+                                                        className="px-3.5 py-1.5 border border-white/5 hover:border-[#C6A969] hover:text-[#C6A969] text-zinc-400 text-xs font-bold uppercase tracking-wider transition-all duration-300 rounded-none cursor-pointer inline-flex items-center gap-1.5 bg-white/[0.02]"
                                                     >
                                                         <i className="fa-solid fa-eye text-xs"></i> Gérer
                                                     </button>
@@ -1273,39 +1297,39 @@ export function AdminConsole() {
                                 {/* Mobile View Cards */}
                                 <div className="block md:hidden space-y-4">
                                     {filteredBookings.map((b) => (
-                                        <div key={b.id} className="border border-zinc-200 dark:border-white/[0.08] bg-white/40 dark:bg-[#0B0B0D]/60 p-4 space-y-3 shadow-sm rounded-none text-left">
-                                            <div className="flex justify-between items-center pb-2 border-b border-zinc-100 dark:border-white/[0.04]">
+                                        <div key={b.id} className="border border-white/[0.04] bg-[#0B0B0D]/60 p-5 space-y-3 shadow-2xl rounded-none text-left transition-all duration-300 hover:border-[#C6A969]/10">
+                                            <div className="flex justify-between items-center pb-2 border-b border-white/[0.04]">
                                                 <span className="font-semibold text-[#C6A969] text-xs">{b.id}</span>
-                                                <span className={`px-2 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-wider border ${statusColors[b.status]}`}>
+                                                <span className={`px-2.5 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-wider border ${statusColors[b.status]}`}>
                                                     {statusLabels[b.status] || b.status}
                                                 </span>
                                             </div>
                                             <div className="flex justify-between items-center text-xs">
-                                                <span className="text-[10px] text-zinc-550 dark:text-zinc-500 font-bold uppercase tracking-wider">Client:</span>
-                                                <span className="font-semibold text-zinc-900 dark:text-white">{b.firstName} {b.lastName}</span>
+                                                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Client:</span>
+                                                <span className="font-semibold text-white">{b.firstName} {b.lastName}</span>
                                             </div>
                                             <div className="flex justify-between items-center text-xs">
-                                                <span className="text-[10px] text-zinc-555 dark:text-zinc-500 font-bold uppercase tracking-wider">Téléphone:</span>
-                                                <span className="text-zinc-800 dark:text-zinc-200">{b.phone}</span>
+                                                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Téléphone:</span>
+                                                <span className="text-zinc-350">{b.phone}</span>
                                             </div>
                                             <div className="flex justify-between items-center text-xs">
-                                                <span className="text-[10px] text-zinc-555 dark:text-zinc-500 font-bold uppercase tracking-wider">Date:</span>
-                                                <span className="text-zinc-800 dark:text-zinc-200">{b.date}</span>
+                                                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Date:</span>
+                                                <span className="text-zinc-350">{b.date}</span>
                                             </div>
                                             <div className="flex justify-between items-center text-xs">
-                                                <span className="text-[10px] text-zinc-555 dark:text-zinc-500 font-bold uppercase tracking-wider">Événement:</span>
-                                                <span className="text-zinc-800 dark:text-zinc-200">{eventLabels[b.eventType] || b.eventType}</span>
+                                                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Événement:</span>
+                                                <span className="text-zinc-350">{eventLabels[b.eventType] || b.eventType}</span>
                                             </div>
                                             <div className="flex justify-between items-center text-xs">
-                                                <span className="text-[10px] text-zinc-555 dark:text-zinc-500 font-bold uppercase tracking-wider">Tarif:</span>
-                                                <span className="font-bold text-zinc-900 dark:text-white">{b.price.toLocaleString("fr-TN")} TND</span>
+                                                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Tarif:</span>
+                                                <span className="font-bold text-white">{b.price.toLocaleString("fr-TN")} TND</span>
                                             </div>
-                                            <div className="pt-2 border-t border-zinc-100 dark:border-white/[0.04]">
+                                            <div className="pt-3 border-t border-white/[0.04]">
                                                 <button
                                                     onClick={() => setActiveBookingId(b.id)}
-                                                    className="w-full py-2 border border-zinc-200 dark:border-zinc-800 hover:border-[#C6A969] dark:hover:border-[#C6A969] hover:text-[#C6A969] dark:hover:text-[#C6A969] text-zinc-650 dark:text-zinc-300 text-xs font-semibold transition-all cursor-pointer rounded-none inline-flex items-center justify-center gap-1.5 bg-white dark:bg-zinc-900"
+                                                    className="w-full py-2.5 border border-white/5 hover:border-[#C6A969] hover:text-[#C6A969] text-zinc-350 text-xs font-bold uppercase tracking-wider transition-all duration-300 rounded-none cursor-pointer inline-flex items-center justify-center gap-1.5 bg-white/[0.01]"
                                                 >
-                                                    <i className="fa-solid fa-eye text-xs"></i> Gérer
+                                                    <i className="fa-solid fa-eye text-xs"></i> Gérer la fiche
                                                 </button>
                                             </div>
                                         </div>
@@ -1313,7 +1337,7 @@ export function AdminConsole() {
                                 </div>
 
                                 {filteredBookings.length === 0 && (
-                                    <div className="text-center py-16 text-zinc-600 dark:text-zinc-400 text-xs italic font-sans">
+                                    <div className="text-center py-16 text-zinc-550 text-xs italic font-sans">
                                         Aucune réservation trouvée.
                                     </div>
                                 )}
@@ -1327,20 +1351,20 @@ export function AdminConsole() {
                             {/* Interactive monthly calendar */}
                             <div className="lg:col-span-2 bg-[#0C0C0E]/60 backdrop-blur-md border border-white/[0.04] p-6 shadow-2xl space-y-6">
                                 <div className="flex items-center justify-between">
-                                    <button onClick={handlePrevMonth} className="w-9 h-9 rounded-none border border-white/5 text-zinc-400 hover:text-white flex items-center justify-center hover:bg-white/5 cursor-pointer transition-colors bg-white/5 shadow-none">
+                                    <button onClick={handlePrevMonth} className="w-9 h-9 rounded-none border border-white/5 text-zinc-400 hover:text-white flex items-center justify-center hover:bg-white/5 cursor-pointer transition-all duration-300 bg-white/[0.02] shadow-none">
                                         <i className="fa-solid fa-chevron-left text-xs"></i>
                                     </button>
-                                    <h4 className="font-display text-lg font-medium text-white">
+                                    <h4 className="font-display text-lg font-medium text-white tracking-wide">
                                         {monthLabel}
                                     </h4>
-                                    <button onClick={handleNextMonth} className="w-9 h-9 rounded-none border border-white/5 text-zinc-400 hover:text-white flex items-center justify-center hover:bg-white/5 cursor-pointer transition-colors bg-white/5 shadow-none">
+                                    <button onClick={handleNextMonth} className="w-9 h-9 rounded-none border border-white/5 text-zinc-400 hover:text-white flex items-center justify-center hover:bg-white/5 cursor-pointer transition-all duration-300 bg-white/[0.02] shadow-none">
                                         <i className="fa-solid fa-chevron-right text-xs"></i>
                                     </button>
                                 </div>
 
                                 <div className="grid grid-cols-7 gap-2">
                                     {dayNames.map((d) => (
-                                        <div key={d} className="text-center text-[10px] uppercase tracking-wider text-zinc-500 font-bold py-2">
+                                        <div key={d} className="text-center text-[10px] uppercase tracking-[0.2em] text-[#C6A969] font-bold py-2">
                                             {d}
                                         </div>
                                     ))}
@@ -1353,7 +1377,7 @@ export function AdminConsole() {
 
                                         let cellStyle = "bg-white/[0.02] text-zinc-300 border border-white/5 hover:border-[#C6A969]/30 hover:bg-[#C6A969]/[0.01]";
                                         if (isPast) {
-                                            cellStyle = "bg-white/[0.01] text-zinc-650 border border-white/[0.02] cursor-not-allowed opacity-30";
+                                            cellStyle = "bg-white/[0.01] text-zinc-700 border border-white/[0.01] cursor-not-allowed opacity-30";
                                         } else if (booking) {
                                             cellStyle = "bg-[#C6A969]/10 text-[#C6A969] font-bold border border-[#C6A969]/35 shadow-[inset_0_0_12px_rgba(198,169,105,0.08)]";
                                         } else if (block) {
@@ -1388,7 +1412,7 @@ export function AdminConsole() {
                                     <div className="bg-[#0C0C0E]/60 backdrop-blur-md border border-white/[0.04] p-6 space-y-4 text-left shadow-2xl animate-fade-in">
                                         <div className="flex items-center gap-3 pb-3 border-b border-white/[0.04]">
                                             <div className="w-1 h-5 bg-[#C6A969] rounded-none animate-pulse" />
-                                            <h3 className="font-display text-base font-medium text-white">
+                                            <h3 className="font-display text-base font-semibold text-white tracking-wide">
                                                 Date : {selectedBlockDate}
                                             </h3>
                                         </div>
@@ -1400,15 +1424,15 @@ export function AdminConsole() {
                                             if (booking) {
                                                 return (
                                                     <div className="space-y-4">
-                                                        <div className="p-4 bg-white/[0.02] border border-white/5 rounded-none space-y-2">
-                                                            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Réservation</span>
+                                                        <div className="p-4 bg-white/[0.01] border border-white/5 rounded-none space-y-2.5">
+                                                            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block">Réservation</span>
                                                             <h4 className="text-xs font-bold text-white">{booking.firstName} {booking.lastName}</h4>
                                                             <p className="text-xs text-zinc-400">{eventLabels[booking.eventType] || booking.eventType}</p>
                                                             <p className="text-xs font-bold text-[#C6A969]">{booking.price.toLocaleString("fr-TN")} TND</p>
                                                         </div>
                                                         <button
                                                             onClick={() => setActiveBookingId(booking.id)}
-                                                            className="w-full py-2.5 bg-[#C6A969] hover:bg-[#D4B978] text-zinc-950 font-sans text-xs font-bold uppercase tracking-wider transition-all duration-300 rounded-none cursor-pointer flex items-center justify-center gap-1.5"
+                                                            className="w-full py-3 bg-[#C6A969] hover:bg-[#D4B978] text-zinc-950 font-sans text-xs font-bold uppercase tracking-wider transition-all duration-300 rounded-none cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_4px_15px_rgba(198,169,105,0.15)]"
                                                         >
                                                             Consulter la Fiche
                                                         </button>
@@ -1425,7 +1449,7 @@ export function AdminConsole() {
                                                         </div>
                                                         <button
                                                             onClick={() => handleUnblockDate(selectedBlockDate)}
-                                                            className="w-full py-2.5 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-450 text-xs font-semibold rounded-none transition-all cursor-pointer"
+                                                            className="w-full py-2.5 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400 text-xs font-bold uppercase tracking-wider rounded-none transition-all cursor-pointer"
                                                         >
                                                             Débloquer la date
                                                         </button>
@@ -1438,17 +1462,17 @@ export function AdminConsole() {
                                                     <p className="text-xs text-zinc-400 font-sans">Cette date est libre.</p>
 
                                                     <div className="space-y-3 pt-2 border-t border-white/[0.04]">
-                                                        <label className="text-xs font-bold uppercase tracking-wider text-zinc-500 block">Bloquer cette journée</label>
+                                                        <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-550 block">Bloquer cette journée</label>
                                                         <input
                                                             type="text"
                                                             placeholder="Motif (Ex: Maintenance, Fermeture...)"
                                                             value={blockReason}
                                                             onChange={(e) => setReason(e.target.value)}
-                                                            className="w-full p-2.5 bg-zinc-950/50 border border-white/[0.06] text-white text-xs focus:outline-none focus:border-[#C6A969]/50 rounded-none placeholder-zinc-650"
+                                                            className="input-lux !py-3"
                                                         />
                                                         <button
                                                             onClick={handleBlockDate}
-                                                            className="w-full py-2.5 bg-red-650 hover:bg-red-600 text-white text-xs font-semibold rounded-none transition-all cursor-pointer"
+                                                            className="w-full py-2.5 bg-red-650 hover:bg-red-600 text-white text-xs font-bold uppercase tracking-wider rounded-none transition-all cursor-pointer"
                                                         >
                                                             Confirmer le Blocage
                                                         </button>
@@ -1458,7 +1482,7 @@ export function AdminConsole() {
                                         })()}
                                     </div>
                                 ) : (
-                                    <div className="bg-[#0C0C0E]/60 backdrop-blur-md border border-white/[0.04] p-6 text-zinc-500 text-center text-xs italic font-sans shadow-2xl text-left">
+                                    <div className="bg-[#0C0C0E]/60 backdrop-blur-md border border-white/[0.04] p-6 text-zinc-500 text-center text-xs italic font-sans shadow-2xl">
                                         Sélectionnez un jour sur le calendrier.
                                     </div>
                                 )}
@@ -1467,7 +1491,7 @@ export function AdminConsole() {
                                 <div className="bg-[#0C0C0E]/60 backdrop-blur-md border border-white/[0.04] p-6 text-left shadow-2xl">
                                     <div className="flex items-center gap-3 pb-3 mb-4 border-b border-white/[0.04]">
                                         <div className="w-1 h-5 bg-[#C6A969] rounded-none" />
-                                        <h3 className="font-display text-base font-medium text-white">
+                                        <h3 className="font-display text-base font-semibold text-white tracking-wide">
                                             Dates bloquées
                                         </h3>
                                     </div>
@@ -1476,7 +1500,7 @@ export function AdminConsole() {
                                             <div key={d.date} className="flex justify-between items-center p-3 bg-white/[0.02] border border-white/5 text-xs rounded-none">
                                                 <div>
                                                     <span className="font-bold text-white block">{d.date}</span>
-                                                    <span className="text-xs text-zinc-550 block">{d.reason}</span>
+                                                    <span className="text-xs text-zinc-500 block">{d.reason}</span>
                                                 </div>
                                                 <button
                                                     onClick={() => handleUnblockDate(d.date)}
@@ -1500,14 +1524,14 @@ export function AdminConsole() {
                         <form onSubmit={handleSaveSettings} className="bg-[#0C0C0E]/60 backdrop-blur-md border border-white/[0.04] p-6 max-w-3xl text-left space-y-8 shadow-2xl animate-fade-in rounded-none">
                             <div className="flex items-center gap-3 pb-4 border-b border-white/[0.04]">
                                 <div className="w-1 h-6 bg-[#C6A969] rounded-none animate-pulse" />
-                                <h3 className="font-display text-xl font-semibold text-white">
+                                <h3 className="font-display text-xl font-semibold text-white tracking-wide">
                                     Configuration de la Salle & Tarifs
                                 </h3>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="flex flex-col">
-                                    <label className="text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2">Nom de la Salle</label>
+                                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-550 mb-2">Nom de la Salle</label>
                                     <input
                                         type="text"
                                         required
@@ -1518,7 +1542,7 @@ export function AdminConsole() {
                                 </div>
 
                                 <div className="flex flex-col">
-                                    <label className="text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2">Téléphone</label>
+                                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-550 mb-2">Téléphone</label>
                                     <input
                                         type="text"
                                         required
@@ -1529,75 +1553,75 @@ export function AdminConsole() {
                                 </div>
 
                                 <div className="flex flex-col">
-                                    <label className="text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2">Email de Contact</label>
+                                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-550 mb-2">Email de Contact</label>
                                     <input
                                         type="email"
                                         required
                                         value={settingsForm.business_email}
                                         onChange={(e) => setSettingsForm({ ...settingsForm, business_email: e.target.value })}
-                                        className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-[#0A0A0C] border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-850 dark:text-white focus:outline-none focus:border-[#C6A969] transition-all rounded-none"
+                                        className="input-lux"
                                     />
                                 </div>
 
                                 <div className="flex flex-col">
-                                    <label className="text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2">Adresse</label>
+                                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-550 mb-2">Adresse</label>
                                     <input
                                         type="text"
                                         required
                                         value={settingsForm.business_address}
                                         onChange={(e) => setSettingsForm({ ...settingsForm, business_address: e.target.value })}
-                                        className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-[#0A0A0C] border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-850 dark:text-white focus:outline-none focus:border-[#C6A969] transition-all rounded-none"
+                                        className="input-lux"
                                     />
                                 </div>
 
                                 <div className="flex flex-col">
-                                    <label className="text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2">Capacité Minimale (Invités)</label>
+                                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-550 mb-2">Capacité Minimale (Invités)</label>
                                     <input
                                         type="number"
                                         required
                                         value={settingsForm.min_guests}
                                         onChange={(e) => setSettingsForm({ ...settingsForm, min_guests: parseInt(e.target.value) || 0 })}
-                                        className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-[#0A0A0C] border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-850 dark:text-white focus:outline-none focus:border-[#C6A969] transition-all rounded-none"
+                                        className="input-lux"
                                     />
                                 </div>
 
                                 <div className="flex flex-col">
-                                    <label className="text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2">Capacité Maximale (Invités)</label>
+                                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-550 mb-2">Capacité Maximale (Invités)</label>
                                     <input
                                         type="number"
                                         required
                                         value={settingsForm.max_guests}
                                         onChange={(e) => setSettingsForm({ ...settingsForm, max_guests: parseInt(e.target.value) || 0 })}
-                                        className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-[#0A0A0C] border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-850 dark:text-white focus:outline-none focus:border-[#C6A969] transition-all rounded-none"
+                                        className="input-lux"
                                     />
                                 </div>
 
                                 <div className="flex flex-col">
-                                    <label className="text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2">Acompte Requis (%)</label>
+                                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-550 mb-2">Acompte Requis (%)</label>
                                     <input
                                         type="number"
                                         required
                                         value={settingsForm.deposit_percent}
                                         onChange={(e) => setSettingsForm({ ...settingsForm, deposit_percent: parseInt(e.target.value) || 30 })}
-                                        className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-[#0A0A0C] border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-850 dark:text-white focus:outline-none focus:border-[#C6A969] transition-all rounded-none"
+                                        className="input-lux"
                                     />
                                 </div>
 
                                 <div className="flex flex-col">
-                                    <label className="text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2">Lien Google Maps</label>
+                                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-550 mb-2">Lien Google Maps</label>
                                     <input
                                         type="text"
                                         value={settingsForm.google_maps_url || ""}
                                         onChange={(e) => setSettingsForm({ ...settingsForm, google_maps_url: e.target.value })}
-                                        className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-[#0A0A0C] border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-850 dark:text-white focus:outline-none focus:border-[#C6A969] transition-all rounded-none"
+                                        className="input-lux"
                                     />
                                 </div>
                             </div>
 
-                            <div className="pt-6 border-t border-zinc-200/80 dark:border-zinc-800/80 space-y-4 text-left">
+                            <div className="pt-6 border-t border-white/[0.04] space-y-4 text-left">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-1.5 h-4 bg-[#C6A969] rounded-none" />
-                                    <h4 className="font-display text-sm font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">
+                                    <div className="w-1.5 h-4 bg-[#C6A969] rounded-none animate-pulse" />
+                                    <h4 className="font-display text-sm font-bold uppercase tracking-wider text-zinc-300">
                                         Tarifs des Événements (TND)
                                     </h4>
                                 </div>
@@ -1607,7 +1631,7 @@ export function AdminConsole() {
                                         const priceVal = currentPrices[slug] !== undefined ? currentPrices[slug] : defaultEventPrices[slug];
                                         return (
                                             <div key={slug} className="flex flex-col">
-                                                <label className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2">
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2">
                                                     {slug === "Entreprise" ? "Entreprise / Pro" : slug}
                                                 </label>
                                                 <input
@@ -1620,7 +1644,7 @@ export function AdminConsole() {
                                                         const newPrices = { ...currentPrices, [slug]: val };
                                                         setSettingsForm({ ...settingsForm, event_prices: newPrices });
                                                     }}
-                                                    className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-[#0A0A0C] border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-850 dark:text-white focus:outline-none focus:border-[#C6A969] transition-all rounded-none"
+                                                    className="input-lux"
                                                 />
                                             </div>
                                         );
@@ -1630,7 +1654,7 @@ export function AdminConsole() {
 
                             <div className="flex justify-end pt-4 border-t border-white/[0.04]">
                                 <button type="submit"
-                                    className="px-6 py-2.5 bg-[#C6A969] hover:bg-[#D4B978] text-zinc-955 font-sans text-xs font-bold uppercase tracking-wider shadow-[0_4px_15px_rgba(198,169,105,0.15)] transition-all duration-300 rounded-none cursor-pointer">
+                                    className="px-6 py-3.5 bg-[#C6A969] hover:bg-[#D4B978] text-zinc-950 font-sans text-xs font-bold uppercase tracking-widest shadow-[0_4px_15px_rgba(198,169,105,0.15)] transition-all duration-300 rounded-none cursor-pointer">
                                     Enregistrer la Configuration
                                 </button>
                             </div>
@@ -1641,25 +1665,25 @@ export function AdminConsole() {
                         <div className="bg-[#0C0C0E]/60 backdrop-blur-md border border-white/[0.04] p-6 space-y-6 animate-fade-in transition-all duration-500 shadow-2xl">
                             <div className="flex items-center gap-3 pb-3 border-b border-white/[0.04] text-left">
                                 <div className="w-1 h-5 bg-red-500/80 rounded-none animate-pulse" />
-                                <h3 className="font-display text-lg font-medium text-white">Corbeille</h3>
+                                <h3 className="font-display text-lg font-medium text-white tracking-wide">Corbeille</h3>
                                 {trashedBookings.length > 0 && (
-                                    <span className="font-sans text-xs text-zinc-400 bg-white/5 px-2.5 py-0.5 rounded-none border border-white/5">
-                                        {trashedBookings.length} élément(s)
+                                    <span className="font-sans text-[10px] text-[#C6A969] bg-[#C6A969]/10 px-2.5 py-0.5 rounded-none border border-[#C6A969]/25 font-bold uppercase tracking-wider">
+                                        {trashedBookings.length} éléments
                                     </span>
                                 )}
                             </div>
 
                             {trashedBookings.length === 0 ? (
-                                <div className="text-center py-16 text-zinc-550 text-xs italic font-sans text-left">
-                                    <i className="fa-solid fa-trash-can mb-3 text-2xl text-zinc-700 block"></i>
-                                    La corbeille est vide.
+                                <div className="text-center py-16 text-zinc-550 text-xs italic font-sans flex flex-col items-center justify-center gap-3">
+                                    <i className="fa-solid fa-trash-can text-3xl text-zinc-700"></i>
+                                    <span>La corbeille est vide.</span>
                                 </div>
                             ) : (
                                 <div>
                                     {/* Desktop View Table */}
                                     <table className="hidden md:table w-full text-left border-collapse min-w-[700px]">
                                         <thead>
-                                            <tr className="border-b border-white/[0.04] font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                                            <tr className="border-b border-white/[0.04] font-sans text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">
                                                 <th className="pb-3 px-3">Réf</th>
                                                 <th className="pb-3 px-3">Client</th>
                                                 <th className="pb-3 px-3">Date</th>
@@ -1669,15 +1693,15 @@ export function AdminConsole() {
                                         </thead>
                                         <tbody>
                                             {trashedBookings.map((b) => (
-                                                <tr key={b.id} className="border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors">
-                                                    <td className="py-3.5 px-3 font-semibold text-zinc-450 text-xs whitespace-nowrap">{b.id}</td>
+                                                <tr key={b.id} className="border-b border-white/[0.02] hover:bg-white/[0.02] transition-all duration-300">
+                                                    <td className="py-3.5 px-3 font-semibold text-zinc-400 text-xs whitespace-nowrap">{b.id}</td>
                                                     <td className="py-3.5 px-3 text-xs font-semibold text-white whitespace-nowrap">{b.firstName} {b.lastName}</td>
                                                     <td className="py-3.5 px-3 text-xs text-zinc-300 whitespace-nowrap">{b.date}</td>
                                                     <td className="py-3.5 px-3 text-xs font-bold text-zinc-300 whitespace-nowrap">{b.price.toLocaleString("fr-TN")} TND</td>
                                                     <td className="py-3.5 px-3 text-center whitespace-nowrap">
                                                         <div className="flex items-center justify-center gap-2">
                                                             <button onClick={() => handleRestore(b.id)}
-                                                                className="px-3 py-1.5 bg-white/[0.02] border border-white/5 hover:bg-emerald-500/10 hover:border-emerald-500/20 text-zinc-400 hover:text-emerald-450 font-sans text-[10px] font-bold uppercase tracking-wider transition-all duration-300 rounded-none cursor-pointer flex items-center gap-1.5">
+                                                                className="px-3 py-1.5 bg-white/[0.02] border border-white/5 hover:bg-emerald-500/10 hover:border-emerald-500/20 text-zinc-400 hover:text-[#D4B978] font-sans text-[10px] font-bold uppercase tracking-wider transition-all duration-300 rounded-none cursor-pointer flex items-center gap-1.5">
                                                                 <i className="fa-solid fa-rotate-left text-xs"></i> Restaurer
                                                             </button>
                                                             <button onClick={() => handlePermanentDelete(b.id)}
@@ -1713,7 +1737,7 @@ export function AdminConsole() {
                                                 </div>
                                                 <div className="pt-2 border-t border-white/[0.04] flex gap-2">
                                                     <button onClick={() => handleRestore(b.id)}
-                                                        className="flex-1 py-2 bg-white/[0.02] border border-white/5 hover:bg-emerald-500/10 hover:border-emerald-500/20 text-zinc-400 hover:text-emerald-450 font-sans text-[10px] font-bold uppercase tracking-wider transition-all duration-300 rounded-none cursor-pointer flex items-center justify-center gap-1.5">
+                                                        className="flex-1 py-2 bg-white/[0.02] border border-white/5 hover:bg-emerald-500/10 hover:border-emerald-500/20 text-zinc-400 hover:text-emerald-400 font-sans text-[10px] font-bold uppercase tracking-wider transition-all duration-300 rounded-none cursor-pointer flex items-center justify-center gap-1.5">
                                                         <i className="fa-solid fa-rotate-left text-xs"></i> Restaurer
                                                     </button>
                                                     <button onClick={() => handlePermanentDelete(b.id)}
@@ -1731,12 +1755,12 @@ export function AdminConsole() {
                 </div>
             </main>
             {activeBooking && (
-                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/85 backdrop-blur-sm animate-fade-in">
                     <div className="bg-[#0A0A0C] border-t border-x sm:border border-white/[0.08] fixed inset-x-0 bottom-0 max-h-[90vh] rounded-none w-full translate-y-0 flex flex-col overflow-hidden shadow-2xl sm:relative sm:inset-auto sm:translate-y-0 sm:max-w-xl sm:h-auto">
                         <div className="p-6 border-b border-white/[0.04] flex justify-between items-center bg-[#0C0C0E]/90">
                             <div className="flex items-center gap-3">
                                 <div className="w-1 h-5 bg-[#C6A969] rounded-none" />
-                                <h3 className="font-display text-lg font-medium text-white">
+                                <h3 className="font-display text-lg font-medium text-white tracking-wide">
                                     {isEditing ? "Modifier la Réservation" : "Fiche Client & Réservation"}
                                 </h3>
                             </div>
@@ -1755,11 +1779,11 @@ export function AdminConsole() {
                                             <input type="text" required value={editForm.firstName} onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })} className="input-lux" />
                                         </div>
                                         <div className="flex flex-col">
-                                            <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Nom</label>
+                                            <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-550 block mb-1">Nom</label>
                                             <input type="text" required value={editForm.lastName} onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })} className="input-lux" />
                                         </div>
                                         <div className="flex flex-col">
-                                            <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Email</label>
+                                            <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-[#C6A969] block mb-1">Email</label>
                                             <input type="email" required value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} className="input-lux" />
                                         </div>
                                         <div className="flex flex-col">
@@ -1771,7 +1795,7 @@ export function AdminConsole() {
                                             <input type="text" required value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} className="input-lux" />
                                         </div>
                                         <div className="flex flex-col">
-                                            <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Type d'Événement</label>
+                                            <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-zinc-550 block mb-1">Type d'Événement</label>
                                             <select value={editForm.eventType} onChange={(e) => setEditForm({ ...editForm, eventType: e.target.value as EventTypeSlug })} className="input-lux bg-[#0C0C0E]">
                                                 <option value="Mariage">Mariage</option><option value="Soirée">Soirée</option><option value="Entreprise">Entreprise</option><option value="Anniversaire">Anniversaire</option><option value="Autre">Autre</option>
                                             </select>
@@ -1794,70 +1818,70 @@ export function AdminConsole() {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="space-y-5">
-                                        <div className="grid grid-cols-2 gap-4 text-xs border-b border-white/[0.04] pb-4">
+                                    <div className="space-y-6">
+                                        <div className="grid grid-cols-2 gap-6 text-xs border-b border-white/[0.04] pb-5">
                                             <div>
-                                                <span className="font-sans text-[10px] text-zinc-500 font-bold uppercase block mb-1">Référence</span>
-                                                <span className="font-semibold text-[#C6A969]">{activeBooking.id}</span>
+                                                <span className="font-sans text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-1">Référence</span>
+                                                <span className="font-semibold text-[#C6A969] text-sm">{activeBooking.id}</span>
                                             </div>
                                             <div>
-                                                <span className="font-sans text-[10px] text-zinc-500 font-bold uppercase block mb-1">Date Sélectionnée</span>
-                                                <span className="font-semibold text-zinc-300">{activeBooking.date}</span>
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4 text-xs border-b border-white/[0.04] pb-4">
-                                            <div>
-                                                <span className="font-sans text-[10px] text-zinc-500 font-bold uppercase block mb-1">Client</span>
-                                                <span className="font-bold text-white text-sm">{activeBooking.firstName} {activeBooking.lastName}</span>
-                                            </div>
-                                            <div>
-                                                <span className="font-sans text-[10px] text-zinc-500 font-bold uppercase block mb-1">Type d'Événement</span>
-                                                <span className="font-bold text-zinc-300">{eventLabels[activeBooking.eventType] || activeBooking.eventType}</span>
-                                            </div>
-                                            <div>
-                                                <span className="font-sans text-[10px] text-zinc-500 font-bold uppercase block mb-1">Email</span>
-                                                <span className="text-zinc-300 font-medium">{activeBooking.email}</span>
-                                            </div>
-                                            <div>
-                                                <span className="font-sans text-[10px] text-zinc-500 font-bold uppercase block mb-1">Téléphone</span>
-                                                <span className="text-zinc-300 font-medium">{activeBooking.phone}</span>
+                                                <span className="font-sans text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-1">Date Sélectionnée</span>
+                                                <span className="font-semibold text-zinc-300 text-sm">{activeBooking.date}</span>
                                             </div>
                                         </div>
-                                        <div className="flex gap-3 border-b border-white/[0.04] pb-4">
+                                        <div className="grid grid-cols-2 gap-6 text-xs border-b border-white/[0.04] pb-5">
+                                            <div>
+                                                <span className="font-sans text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-1">Client</span>
+                                                <span className="font-bold text-white text-base tracking-wide block">{activeBooking.firstName} {activeBooking.lastName}</span>
+                                            </div>
+                                            <div>
+                                                <span className="font-sans text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-1">Type d'Événement</span>
+                                                <span className="font-bold text-zinc-300 text-sm">{eventLabels[activeBooking.eventType] || activeBooking.eventType}</span>
+                                            </div>
+                                            <div className="mt-2">
+                                                <span className="font-sans text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-1">Email</span>
+                                                <span className="text-zinc-300 font-medium text-xs break-all">{activeBooking.email}</span>
+                                            </div>
+                                            <div className="mt-2">
+                                                <span className="font-sans text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-1">Téléphone</span>
+                                                <span className="text-zinc-300 font-medium text-xs">{activeBooking.phone}</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col sm:flex-row gap-3 border-b border-white/[0.04] pb-5">
                                             <a href={generateWhatsAppLink(activeBooking.phone, activeBooking.firstName, activeBooking.lastName, activeBooking.date)}
                                                 target="_blank" rel="noopener noreferrer"
-                                                className="flex-1 py-2.5 bg-[#25D366] hover:bg-[#20ba59] text-zinc-950 font-sans text-xs font-bold uppercase tracking-wider text-center inline-flex items-center justify-center gap-2 cursor-pointer rounded-none decoration-none">
+                                                className="flex-1 py-3 bg-[#25D366] hover:bg-[#20ba59] text-zinc-950 font-sans text-xs font-bold uppercase tracking-widest text-center inline-flex items-center justify-center gap-2 cursor-pointer rounded-none decoration-none transition-all duration-300 shadow-[0_4px_12px_rgba(37,211,102,0.15)]">
                                                 <i className="fa-brands fa-whatsapp text-sm"></i> WhatsApp Client
                                             </a>
                                             <a href={`mailto:${activeBooking.email}?subject=Réservation%20Albatros`}
-                                                className="flex-1 py-2.5 bg-white/[0.02] hover:bg-white/5 border border-white/5 text-zinc-300 font-sans text-xs font-bold uppercase tracking-wider text-center inline-flex items-center justify-center gap-2 cursor-pointer rounded-none decoration-none transition-all">
+                                                className="flex-1 py-3 bg-white/[0.02] hover:bg-white/5 border border-white/5 text-zinc-300 font-sans text-xs font-bold uppercase tracking-widest text-center inline-flex items-center justify-center gap-2 cursor-pointer rounded-none decoration-none transition-all duration-300">
                                                 <i className="fa-solid fa-envelope text-sm"></i> Envoyer un Email
                                             </a>
                                         </div>
-                                        <div className="bg-[#0C0C0E]/80 border border-white/5 p-5 rounded-none text-xs space-y-3">
-                                            <div className="flex justify-between">
-                                                <span className="text-zinc-500 font-medium">Tarif Total :</span>
-                                                <span className="font-bold text-white">{activeBooking.price.toLocaleString("fr-TN")} TND</span>
+                                        <div className="bg-[#08080A] border border-white/[0.04] p-5 rounded-none text-xs space-y-3.5">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-zinc-500 font-bold uppercase tracking-wider text-[10px]">Tarif Total :</span>
+                                                <span className="font-bold text-white text-sm">{activeBooking.price.toLocaleString("fr-TN")} TND</span>
                                             </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-zinc-500 font-medium">Acompte Requis :</span>
-                                                <span className="font-bold text-[#C6A969]">{activeBooking.deposit.toLocaleString("fr-TN")} TND</span>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-zinc-500 font-bold uppercase tracking-wider text-[10px]">Acompte Requis :</span>
+                                                <span className="font-bold text-[#C6A969] text-sm">{activeBooking.deposit.toLocaleString("fr-TN")} TND</span>
                                             </div>
-                                            <div className="flex justify-between border-t border-white/[0.04] pt-2 font-bold text-xs">
-                                                <span className="text-zinc-500 font-medium">Statut :</span>
-                                                <span className={`px-2.5 py-0.5 rounded-none text-sm font-semibold border ${statusColors[activeBooking.status]}`}>
+                                            <div className="flex justify-between items-center border-t border-white/[0.04] pt-3 font-bold">
+                                                <span className="text-zinc-500 font-bold uppercase tracking-wider text-[10px]">Statut :</span>
+                                                <span className={`px-3 py-1 rounded-none text-xs font-bold uppercase tracking-wider border ${statusColors[activeBooking.status]}`}>
                                                     {statusLabels[activeBooking.status] || activeBooking.status}
                                                 </span>
                                             </div>
                                         </div>
                                         {activeBooking.status === "pending" && (
-                                            <div className="p-4 bg-white/[0.02] border border-white/5 rounded-none text-xs space-y-3 text-left">
-                                                <span className="font-bold text-zinc-400 block font-sans text-xs uppercase tracking-wider">Enregistrer un paiement hors-ligne :</span>
-                                                <div className="flex gap-2">
+                                            <div className="p-4 bg-[#C6A969]/5 border border-[#C6A969]/10 rounded-none text-xs space-y-3 text-left">
+                                                <span className="font-bold text-[#C6A969] block font-sans text-[10px] uppercase tracking-wider">Enregistrer un paiement hors-ligne :</span>
+                                                <div className="flex gap-3">
                                                     <button type="button" onClick={async () => { setIsMutating(true); setBookings(prev => prev.map(b => b.id === activeBooking.id ? { ...b, status: 'confirmed' } : b)); try { await recordManualPayment(activeBooking.id, "cash"); toast.success("Paiement Espèces validé !"); } catch (e: any) { toast.error(e.message); } finally { setIsMutating(false); loadData(); } }}
-                                                        className="flex-1 py-2 bg-white/[0.02] hover:bg-[#C6A969]/10 hover:border-[#C6A969]/20 border border-white/5 text-zinc-300 hover:text-[#C6A969] text-xs font-semibold rounded-none cursor-pointer transition-all duration-300">Espèces</button>
+                                                        className="flex-1 py-2.5 bg-white/[0.02] hover:bg-[#C6A969]/10 hover:border-[#C6A969]/20 border border-white/5 text-zinc-300 hover:text-[#C6A969] text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-all duration-300">Espèces</button>
                                                     <button type="button" onClick={async () => { setIsMutating(true); setBookings(prev => prev.map(b => b.id === activeBooking.id ? { ...b, status: 'confirmed' } : b)); try { await recordManualPayment(activeBooking.id, "cheque"); toast.success("Paiement Chèque validé !"); } catch (e: any) { toast.error(e.message); } finally { setIsMutating(false); loadData(); } }}
-                                                        className="flex-1 py-2 bg-white/[0.02] hover:bg-[#C6A969]/10 hover:border-[#C6A969]/20 border border-white/5 text-zinc-300 hover:text-[#C6A969] text-xs font-semibold rounded-none cursor-pointer transition-all duration-300">Chèque</button>
+                                                        className="flex-1 py-2.5 bg-white/[0.02] hover:bg-[#C6A969]/10 hover:border-[#C6A969]/20 border border-white/5 text-zinc-300 hover:text-[#C6A969] text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-all duration-300">Chèque</button>
                                                 </div>
                                             </div>
                                         )}
@@ -1869,7 +1893,7 @@ export function AdminConsole() {
                                 <div>
                                     {!isEditing && (
                                         <button type="button" onClick={() => handleDelete(activeBooking.id)}
-                                            className="px-4 py-2 border border-red-500/20 text-red-400 hover:bg-red-500/10 hover:border-red-500/30 font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-all bg-white/[0.02]">
+                                            className="px-5 py-2.5 border border-red-500/20 text-red-400 hover:bg-red-500/10 hover:border-red-500/30 font-sans text-xs font-bold uppercase tracking-widest rounded-none cursor-pointer transition-all duration-300 bg-white/[0.01]">
                                             Supprimer
                                         </button>
                                     )}
@@ -1878,21 +1902,21 @@ export function AdminConsole() {
                                     {isEditing ? (
                                         <>
                                             <button type="button" onClick={() => setIsEditing(false)}
-                                                className="px-4 py-2 border border-white/5 hover:bg-white/5 text-zinc-400 hover:text-white font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-all bg-white/[0.02]">Annuler</button>
+                                                className="px-4 py-2.5 border border-white/5 hover:bg-white/5 text-zinc-400 hover:text-white font-sans text-xs font-bold uppercase tracking-widest rounded-none cursor-pointer transition-all duration-300 bg-white/[0.01]">Annuler</button>
                                             <button type="submit"
-                                                className="px-4 py-2 bg-[#C6A969] hover:bg-[#D4B978] text-zinc-950 font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-all shadow-[0_4px_15px_rgba(198,169,105,0.15)]">Enregistrer</button>
+                                                className="px-5 py-2.5 bg-[#C6A969] hover:bg-[#D4B978] text-zinc-950 font-sans text-xs font-bold uppercase tracking-widest rounded-none cursor-pointer transition-all duration-300 shadow-[0_4px_15px_rgba(198,169,105,0.15)]">Enregistrer</button>
                                         </>
                                     ) : (
                                         <>
                                             <button type="button" onClick={() => startEditing(activeBooking)}
-                                                className="px-4 py-2 border border-white/5 hover:bg-white/5 text-zinc-400 hover:text-white font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-all bg-white/[0.02]">Modifier</button>
+                                                className="px-4 py-2.5 border border-white/5 hover:bg-white/5 text-zinc-400 hover:text-white font-sans text-xs font-bold uppercase tracking-widest rounded-none cursor-pointer transition-all duration-300 bg-white/[0.01]">Modifier</button>
                                             {(activeBooking.status === "pending" || activeBooking.status === "pending_payment") && (
                                                 <button type="button" onClick={() => handleStatusChange(activeBooking.id, "confirmed")}
-                                                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors">Payé</button>
+                                                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-sans text-xs font-bold uppercase tracking-widest rounded-none cursor-pointer transition-all duration-300">Payé</button>
                                             )}
                                             {activeBooking.status === "confirmed" && (
                                                 <button type="button" onClick={() => { setRefundTargetId(activeBooking.id); setShowRefundModal(true); }}
-                                                    className="px-4 py-2 bg-red-650 hover:bg-red-600 text-white font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors">Rembourser</button>
+                                                    className="px-5 py-2.5 bg-red-650 hover:bg-red-600 text-white font-sans text-xs font-bold uppercase tracking-widest rounded-none cursor-pointer transition-all duration-300">Rembourser</button>
                                             )}
                                         </>
                                     )}
@@ -1911,16 +1935,16 @@ export function AdminConsole() {
                             <div className="w-16 h-16 mx-auto rounded-none bg-red-500/10 border border-red-500/20 flex items-center justify-center animate-pulse">
                                 <i className="fa-solid fa-triangle-exclamation text-red-400 text-2xl"></i>
                             </div>
-                            <h3 className="font-display text-xl font-medium text-white">Confirmer le Remboursement</h3>
+                            <h3 className="font-display text-xl font-semibold text-white tracking-wide">Confirmer le Remboursement</h3>
                             <p className="font-sans text-xs text-zinc-400">
                                 Rembourser et annuler cette réservation ?<br />
-                                <span className="text-red-400/80">Cette action est irréversible.</span>
+                                <span className="text-red-400/80 font-bold block mt-1">Cette action est irréversible.</span>
                             </p>
                             <div className="flex gap-3 pt-2">
                                 <button onClick={() => { setShowRefundModal(false); setRefundTargetId(null); }}
-                                    className="flex-1 py-2.5 border border-white/5 hover:bg-white/5 text-zinc-400 hover:text-white font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors bg-white/[0.02]">Annuler</button>
+                                    className="flex-1 py-3 border border-white/5 hover:bg-white/5 text-zinc-400 hover:text-white font-sans text-xs font-bold uppercase tracking-widest rounded-none cursor-pointer transition-all bg-white/[0.02]">Annuler</button>
                                 <button onClick={handleRefundConfirm}
-                                    className="flex-1 py-2.5 bg-red-650 hover:bg-red-600 text-white font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors">Confirmer</button>
+                                    className="flex-1 py-3 bg-red-650 hover:bg-red-600 text-white font-sans text-xs font-bold uppercase tracking-widest rounded-none cursor-pointer transition-colors">Confirmer</button>
                             </div>
                         </div>
                     </div>
@@ -1935,16 +1959,16 @@ export function AdminConsole() {
                             <div className="w-16 h-16 mx-auto rounded-none bg-amber-500/10 border border-amber-500/20 flex items-center justify-center animate-pulse">
                                 <i className="fa-solid fa-trash-can text-amber-400 text-2xl"></i>
                             </div>
-                            <h3 className="font-display text-xl font-medium text-white">Déplacer vers la corbeille ?</h3>
+                            <h3 className="font-display text-xl font-semibold text-white tracking-wide">Déplacer vers la corbeille ?</h3>
                             <p className="font-sans text-xs text-zinc-400">
                                 Cette réservation sera déplacée dans la corbeille.<br />
-                                <span className="text-zinc-550">Vous pourrez la restaurer plus tard.</span>
+                                <span className="text-zinc-550 block mt-1">Vous pourrez la restaurer plus tard.</span>
                             </p>
                             <div className="flex gap-3 pt-2">
                                 <button onClick={() => { setShowDeleteConfirm(false); setDeleteTargetId(null); }}
-                                    className="flex-1 py-2.5 border border-white/5 hover:bg-white/5 text-zinc-400 hover:text-white font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors bg-white/[0.02]">Annuler</button>
+                                    className="flex-1 py-3 border border-white/5 hover:bg-white/5 text-zinc-400 hover:text-white font-sans text-xs font-bold uppercase tracking-widest rounded-none cursor-pointer transition-all bg-white/[0.02]">Annuler</button>
                                 <button onClick={handleDeleteConfirm}
-                                    className="flex-1 py-2.5 bg-[#C6A969] hover:bg-[#D4B978] text-zinc-950 font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-all shadow-[0_4px_15px_rgba(198,169,105,0.15)]">Confirmer</button>
+                                    className="flex-1 py-3 bg-[#C6A969] hover:bg-[#D4B978] text-zinc-950 font-sans text-xs font-bold uppercase tracking-widest rounded-none cursor-pointer transition-all shadow-[0_4px_15px_rgba(198,169,105,0.15)]">Confirmer</button>
                             </div>
                         </div>
                     </div>
@@ -1959,15 +1983,15 @@ export function AdminConsole() {
                             <div className="w-16 h-16 mx-auto rounded-none bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center animate-pulse">
                                 <i className="fa-solid fa-rotate-left text-emerald-400 text-2xl"></i>
                             </div>
-                            <h3 className="font-display text-xl font-medium text-white">Restaurer la réservation ?</h3>
+                            <h3 className="font-display text-xl font-semibold text-white tracking-wide">Restaurer la réservation ?</h3>
                             <p className="font-sans text-xs text-zinc-400">
                                 Cette réservation sera restaurée et réapparaîtra dans la liste principale.
                             </p>
                             <div className="flex gap-3 pt-2">
                                 <button onClick={() => { setShowRestoreConfirm(false); setRestoreTargetId(null); }}
-                                    className="flex-1 py-2.5 border border-white/5 hover:bg-white/5 text-zinc-400 hover:text-white font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors bg-white/[0.02]">Annuler</button>
+                                    className="flex-1 py-3 border border-white/5 hover:bg-white/5 text-zinc-400 hover:text-white font-sans text-xs font-bold uppercase tracking-widest rounded-none cursor-pointer transition-all bg-white/[0.02]">Annuler</button>
                                 <button onClick={handleRestoreConfirm}
-                                    className="flex-1 py-2.5 bg-[#C6A969] hover:bg-[#D4B978] text-zinc-950 font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-all shadow-[0_4px_15px_rgba(198,169,105,0.15)]">Restaurer</button>
+                                    className="flex-1 py-3 bg-[#C6A969] hover:bg-[#D4B978] text-zinc-950 font-sans text-xs font-bold uppercase tracking-widest rounded-none cursor-pointer transition-all shadow-[0_4px_15px_rgba(198,169,105,0.15)]">Restaurer</button>
                             </div>
                         </div>
                     </div>
@@ -1982,16 +2006,16 @@ export function AdminConsole() {
                             <div className="w-16 h-16 mx-auto rounded-none bg-red-500/10 border border-red-500/20 flex items-center justify-center animate-pulse">
                                 <i className="fa-solid fa-trash-can text-red-400 text-2xl"></i>
                             </div>
-                            <h3 className="font-display text-xl font-medium text-white">Supprimer définitivement ?</h3>
+                            <h3 className="font-display text-xl font-semibold text-white tracking-wide">Supprimer définitivement ?</h3>
                             <p className="font-sans text-xs text-zinc-400">
                                 Cette réservation sera supprimée définitivement.<br />
-                                <span className="text-red-405 font-bold">Cette action est irréversible.</span>
+                                <span className="text-red-405 font-bold block mt-1">Cette action est irréversible.</span>
                             </p>
                             <div className="flex gap-3 pt-2">
                                 <button onClick={() => { setShowPermanentDeleteConfirm(false); setPermanentDeleteTargetId(null); }}
-                                    className="flex-1 py-2.5 border border-white/5 hover:bg-white/5 text-zinc-400 hover:text-white font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors bg-white/[0.02]">Annuler</button>
+                                    className="flex-1 py-3 border border-white/5 hover:bg-white/5 text-zinc-400 hover:text-white font-sans text-xs font-bold uppercase tracking-widest rounded-none cursor-pointer transition-all bg-white/[0.02]">Annuler</button>
                                 <button onClick={handlePermanentDeleteConfirm}
-                                    className="flex-1 py-2.5 bg-red-650 hover:bg-red-600 text-white font-sans text-xs font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors">Supprimer</button>
+                                    className="flex-1 py-3 bg-red-650 hover:bg-red-600 text-white font-sans text-xs font-bold uppercase tracking-widest rounded-none cursor-pointer transition-colors">Supprimer</button>
                             </div>
                         </div>
                     </div>
@@ -2005,7 +2029,7 @@ export function AdminConsole() {
                         <div className="p-6 border-b border-white/[0.04] flex justify-between items-center bg-[#0C0C0E]/90">
                             <div className="flex items-center gap-3">
                                 <div className="w-1 h-5 bg-[#C6A969] rounded-none animate-pulse" />
-                                <h3 className="font-display text-lg font-medium text-white">
+                                <h3 className="font-display text-lg font-semibold text-white tracking-wide">
                                     Créer une Réservation Manuelle
                                 </h3>
                             </div>
@@ -2068,11 +2092,11 @@ export function AdminConsole() {
                                 </div>
                             </div>
 
-                            <div className="p-6 border-t border-white/[0.04] bg-[#0C0C0E]/90 flex justify-end gap-3 font-sans text-xs font-bold uppercase tracking-wider">
+                            <div className="p-6 border-t border-white/[0.04] bg-[#0C0C0E]/90 flex justify-end gap-3 font-sans text-xs font-bold uppercase tracking-widest">
                                 <button type="button" onClick={() => setShowManualModal(false)}
-                                    className="px-4 py-2.5 border border-white/5 hover:bg-white/5 text-zinc-400 hover:text-white rounded-none cursor-pointer transition-colors bg-white/[0.02]">Annuler</button>
+                                    className="px-4 py-2.5 border border-white/5 hover:bg-white/5 text-zinc-400 hover:text-white rounded-none cursor-pointer transition-all duration-300 bg-white/[0.01]">Annuler</button>
                                 <button type="submit"
-                                    className="px-5 py-2.5 bg-[#C6A969] hover:bg-[#D4B978] text-zinc-950 rounded-none cursor-pointer transition-all shadow-[0_4px_15px_rgba(198,169,105,0.15)]">Créer la Réservation</button>
+                                    className="px-5 py-2.5 bg-[#C6A969] hover:bg-[#D4B978] text-zinc-950 rounded-none cursor-pointer transition-all duration-300 shadow-[0_4px_15px_rgba(198,169,105,0.15)]">Créer la Réservation</button>
                             </div>
                         </form>
                     </div>
@@ -2085,7 +2109,7 @@ export function AdminConsole() {
 // Stats Card View Component
 function StatCard({ icon, label, value, isGold }: { icon: string; label: string; value: any; isGold?: boolean }) {
     return (
-        <div className="group relative bg-[#0C0C0E]/60 backdrop-blur-md border border-white/[0.04] p-6 flex items-center gap-5 text-left rounded-none transition-all duration-500 hover:border-[#C6A969]/30 hover:bg-[#C6A969]/[0.01] hover:-translate-y-1 overflow-hidden shadow-2xl">
+        <div className="group relative bg-[#0C0C0E]/65 backdrop-blur-md border border-white/[0.04] p-6 flex items-center gap-5 text-left rounded-none transition-all duration-500 hover:border-[#C6A969]/30 hover:bg-[#C6A969]/[0.01] hover:-translate-y-1 overflow-hidden shadow-2xl">
             {/* Top gold line highlight on hover */}
             <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-[#C6A969] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             
@@ -2094,7 +2118,7 @@ function StatCard({ icon, label, value, isGold }: { icon: string; label: string;
                 <i className={`fa-solid ${icon}`}></i>
             </div>
             <div>
-                <span className="font-sans text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-550 block">
+                <span className="font-sans text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-500 block">
                     {label}
                 </span>
                 <h3 className={`font-display text-2xl font-semibold leading-tight mt-1 tracking-tight ${isGold ? "text-[#C6A969] drop-shadow-[0_0_8px_rgba(198,169,105,0.15)]" : "text-white"}`}>
